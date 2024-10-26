@@ -1,0 +1,15 @@
+name: victoria-metrics
+services:
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:v1.102.1
+    container_name: victoria-metrics
+    ports:
+      - "8428:8428"
+    volumes:
+      - victoria-metrics-data:/victoria-metrics-data
+    command:
+      - '--storageDataPath=/victoria-metrics-data'
+      - '--retentionPeriod=1'
+      - '--httpListenAddr=:8428'
+volumes:
+  victoria-metrics-data:
