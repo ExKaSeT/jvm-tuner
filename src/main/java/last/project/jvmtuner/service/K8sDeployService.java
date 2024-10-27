@@ -2,123 +2,132 @@ package last.project.jvmtuner.service;
 
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
-import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class K8sDeployService {
 
     private static final String VM_AGENT_IMAGE = "victoriametrics/vmagent:latest";
-    private static final String VM_AGENT_CONFIG = "global:\n" +
-            "  external_labels:\n" +
-            "    jvm-tuner-id: %s\n" +
-            "scrape_configs:\n" +
-            "- job_name: \"app\"\n" +
-            "    scrape_interval: 10s\n" +
-            "    scrape_timeout: 10s\n" +
-            "    honor_labels: true\n" +
-            "    static_configs:\n" +
-            "      - targets:\n" +
-            "        - %s";
+    private static final String VM_AGENT_CONFIG_PATH = "/etc/vmagent/";
+    private static final String VM_AGENT_CONFIG_FILE_NAME = "config.yaml";
+    private static final String POD_ENV_NAME = "POD_NAME";
+    private static final String POD_NAMESPACE_ENV_NAME = "POD_NAMESPACE";
+    private static String VM_AGENT_CONFIG = """
+            global:
+              external_labels:
+                %s: %s
+            
+            scrape_configs:
+              - job_name: "pod"
+                scrape_interval: 10s
+                scrape_timeout: 10s
+                static_configs:
+                  - targets:
+                      - %s
+                bearer_token_file: %s
+                tls_config:
+                    insecure_skip_verify: true
+              - job_name: "app"
+                scrape_interval: 10s
+                scrape_timeout: 10s
+                static_configs:
+                  - targets:
+                      - %s
+            """;
 
-    public void deploy() {
-        var uuid = UUID.randomUUID();
+    @Value("${metrics.uuid-label-name}")
+    private String uuidLabelName;
 
-        var client = new KubernetesClientBuilder().build();
-        String namespace = "default";
-        String containerName = "demo-metrics";
+    @Value("${metrics.push-url}")
+    private String metricsPushUrl;
 
-        Deployment deployment = new KubernetesSerialization().unmarshal("kind: Deployment\n" +
-                "apiVersion: apps/v1\n" +
-                "metadata:\n" +
-                "  name: jvm-tuner\n" +
-                "  namespace: default\n" +
-                "  labels:\n" +
-                "    app: jvm-tuner\n" +
-                "spec:\n" +
-                "  replicas: 1\n" +
-                "  selector:\n" +
-                "    matchLabels:\n" +
-                "      app: jvm-tuner\n" +
-                "  template:\n" +
-                "    metadata:\n" +
-                "      creationTimestamp: null\n" +
-                "      labels:\n" +
-                "        app: jvm-tuner\n" +
-                "    spec:\n" +
-                "      containers:\n" +
-                "        - name: demo-metrics\n" +
-                "          image: exkaset/demo-metrics\n" +
-                "          ports:\n" +
-                "            - containerPort: 8080\n" +
-                "              protocol: TCP\n" +
-                "          resources:\n" +
-                "            limits:\n" +
-                "              cpu: 250m\n" +
-                "              memory: 500Mi\n" +
-                "            requests:\n" +
-                "              cpu: 250m\n" +
-                "              memory: 500Mi", Deployment.class);
+    @Value("${metrics.k8s.url}")
+    private String k8sMetricsUrl;
 
-        Container targetContainer = deployment.getSpec().getTemplate().getSpec().getContainers()
+    @Value("${metrics.k8s.token-path}")
+    private String k8sTokenPath;
+
+    @PostConstruct
+    private void init() {
+        VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", k8sMetricsUrl, k8sTokenPath, "%s");
+    }
+
+    public void deploy(Deployment app, KubernetesClient client, String appContainerName, String scrapePortWithPath) {
+        String namespace = client.getNamespace();
+        var uuid = UUID.randomUUID().toString();
+
+        var appMeta = app.getMetadata();
+        appMeta.setName(uuid);
+        appMeta.getLabels().put("app", uuid);
+        var appSpec = app.getSpec();
+        appSpec.setReplicas(1);
+        appSpec.setSelector(new LabelSelectorBuilder().withMatchLabels(Map.of("app", uuid)).build());
+        appSpec.getTemplate().getMetadata().getLabels().put("app", uuid);
+
+        var appContainer = app.getSpec().getTemplate().getSpec().getContainers()
                 .stream()
-                .filter(c -> c.getName().equals(containerName))
+                .filter(c -> c.getName().equals(appContainerName))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Container not found: " + containerName));
+                .orElseThrow(() -> new IllegalArgumentException("Container not found: " + appContainerName));
 
-        List<EnvVar> envVars = targetContainer.getEnv();
+        List<EnvVar> envVars = appContainer.getEnv();
         boolean javaToolOptionsExists = envVars.stream()
                 .anyMatch(envVar -> envVar.getName().equals("JAVA_TOOL_OPTIONS"));
-
         if (javaToolOptionsExists) {
-            throw new IllegalArgumentException("JAVA_TOOL_OPTIONS уже существует в контейнере: " + containerName);
+            throw new IllegalArgumentException("JAVA_TOOL_OPTIONS already exists in container: " + appContainerName);
         }
-
-        // Добавляем переменную окружения JAVA_TOOL_OPTIONS
         envVars.add(new EnvVar("JAVA_TOOL_OPTIONS", "-XX:+UseContainerSupport", null));
 
         String vmAgentConfigVolumeName = "vm-agent-config-" + uuid;
-        String vmAgentConfigFilePath = "/etc/vmagent/";
-        String vmAgentConfigFileName = "config.yaml";
+        app.getSpec().getTemplate().getSpec().getVolumes().add(new VolumeBuilder().withName(vmAgentConfigVolumeName)
+                .withEmptyDir(new EmptyDirVolumeSource()).build());
 
-        deployment.getSpec().getTemplate().getSpec().getVolumes().add(new VolumeBuilder().withName(vmAgentConfigVolumeName).withEmptyDir(new EmptyDirVolumeSource()).build());
-
-        Container vmAgentConfigInitContainer = new ContainerBuilder()
+        var vmAgentConfigInitContainer = new ContainerBuilder()
                 .withName("vm-agent-init-" + uuid)
                 .withImage("busybox")
-                .withCommand("sh", "-c", "echo \"" + String.format(VM_AGENT_CONFIG, uuid, "http://localhost:8080/actuator/prometheus") + "\" > " + vmAgentConfigFilePath + vmAgentConfigFileName)
+                .withCommand("sh", "-c", String.format("echo \"%s\" > %s%s",
+                                String.format(VM_AGENT_CONFIG, uuid, "http://localhost:" + scrapePortWithPath),
+                        VM_AGENT_CONFIG_PATH, VM_AGENT_CONFIG_FILE_NAME))
                 .withVolumeMounts(new VolumeMountBuilder()
                         .withName(vmAgentConfigVolumeName)
-                        .withMountPath(vmAgentConfigFilePath)
+                        .withMountPath(VM_AGENT_CONFIG_PATH)
                         .build())
                 .build();
+        app.getSpec().getTemplate().getSpec().getInitContainers().add(vmAgentConfigInitContainer);
 
-        deployment.getSpec().getTemplate().getSpec().getInitContainers().add(vmAgentConfigInitContainer);
-
-        Container vmAgentContainer = new ContainerBuilder()
+        var vmAgentContainer = new ContainerBuilder()
                 .withName("vm-agent-" + uuid)
                 .withImage(VM_AGENT_IMAGE)
                 .withPorts(new ContainerPortBuilder()
-                        .withName("vmagent")
                         .withContainerPort(8429)
                         .build())
-                .withArgs("-remoteWrite.url=http://192.168.1.82:8428/api/v1/write",
-                        "-config.file=" + vmAgentConfigFilePath + vmAgentConfigFileName)
+                .withArgs("-remoteWrite.url=" + metricsPushUrl,
+                        "-promscrape.config=" + VM_AGENT_CONFIG_PATH + VM_AGENT_CONFIG_FILE_NAME)
                 .withVolumeMounts(new VolumeMountBuilder()
                         .withName(vmAgentConfigVolumeName)
-                        .withMountPath(vmAgentConfigFilePath)
+                        .withMountPath(VM_AGENT_CONFIG_PATH)
+                        .build())
+                .withEnv(buildEnvFieldPath(POD_ENV_NAME, "metadata.name"),
+                        buildEnvFieldPath(POD_NAMESPACE_ENV_NAME, "metadata.namespace"))
+                .build();
+        app.getSpec().getTemplate().getSpec().getContainers().add(vmAgentContainer);
+
+        client.apps().deployments().inNamespace(namespace).resource(app).createOrReplace();
+    }
+
+    private EnvVar buildEnvFieldPath(String envName, String fieldPath) {
+        return new EnvVarBuilder().withName(envName)
+                .withValueFrom(new EnvVarSourceBuilder()
+                        .withFieldRef(new ObjectFieldSelectorBuilder().withFieldPath(fieldPath)
+                                .build())
                         .build())
                 .build();
-
-        deployment.getSpec().getTemplate().getSpec().getContainers().add(vmAgentContainer);
-
-        client.apps().deployments().inNamespace(namespace).resource(deployment).createOrReplace();
-
-        System.out.println("Deployment успешно обновлен!");
-        client.close();
     }
 }
