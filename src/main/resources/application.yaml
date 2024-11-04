@@ -5,5 +5,3 @@ metrics:
   push-url: http://192.168.1.82:8428/api/v1/write
   k8s:
     service-account-name: jvm-tuner
-    token-path: /var/run/secrets/kubernetes.io/serviceaccount/token
-    url: https://$(KUBERNETES_SERVICE_HOST):$(KUBERNETES_SERVICE_PORT)/apis/metrics.k8s.io/v1beta1/namespaces/$(POD_NAMESPACE)/pods/$(POD_NAME)

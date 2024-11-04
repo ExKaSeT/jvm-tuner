@@ -17,25 +17,15 @@ public class K8sDeployService {
     private static final String VM_AGENT_IMAGE = "victoriametrics/vmagent:latest";
     private static final String VM_AGENT_CONFIG_PATH = "/etc/vmagent/";
     private static final String VM_AGENT_CONFIG_FILE_NAME = "config.yaml";
-    private static final String POD_ENV_NAME = "POD_NAME";
-    private static final String POD_NAMESPACE_ENV_NAME = "POD_NAMESPACE";
+
     private static String VM_AGENT_CONFIG = """
             global:
               external_labels:
                 %s: %s
             
             scrape_configs:
-              - job_name: "pod"
-                scrape_interval: 10s
-                scrape_timeout: 10s
-                static_configs:
-                  - targets:
-                      - %s
-                bearer_token_file: %s
-                tls_config:
-                    insecure_skip_verify: true
               - job_name: "app"
-                scrape_interval: 10s
+                scrape_interval: 15s
                 scrape_timeout: 10s
                 static_configs:
                   - targets:
@@ -48,15 +38,9 @@ public class K8sDeployService {
     @Value("${metrics.push-url}")
     private String metricsPushUrl;
 
-    @Value("${metrics.k8s.url}")
-    private String k8sMetricsUrl;
-
-    @Value("${metrics.k8s.token-path}")
-    private String k8sTokenPath;
-
     @PostConstruct
     private void init() {
-        VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", k8sMetricsUrl, k8sTokenPath, "%s");
+        VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", "%s");
     }
 
     public void deploy(Deployment app, KubernetesClient client, String appContainerName, String scrapePortWithPath) {
@@ -114,20 +98,9 @@ public class K8sDeployService {
                         .withName(vmAgentConfigVolumeName)
                         .withMountPath(VM_AGENT_CONFIG_PATH)
                         .build())
-                .withEnv(buildEnvFieldPath(POD_ENV_NAME, "metadata.name"),
-                        buildEnvFieldPath(POD_NAMESPACE_ENV_NAME, "metadata.namespace"))
                 .build();
         app.getSpec().getTemplate().getSpec().getContainers().add(vmAgentContainer);
 
-        client.apps().deployments().inNamespace(namespace).resource(app).createOrReplace();
-    }
-
-    private EnvVar buildEnvFieldPath(String envName, String fieldPath) {
-        return new EnvVarBuilder().withName(envName)
-                .withValueFrom(new EnvVarSourceBuilder()
-                        .withFieldRef(new ObjectFieldSelectorBuilder().withFieldPath(fieldPath)
-                                .build())
-                        .build())
-                .build();
+        client.apps().deployments().inNamespace(namespace).resource(app).create();
     }
 }
