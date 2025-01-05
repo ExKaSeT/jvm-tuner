@@ -54,7 +54,8 @@ class JvmTunerApplicationTests {
                           command: ["/bin/sh", "-c", "tail -f /dev/null"]""", Deployment.class);
 
 
-        k8sDeployService.deploy(deployment, client, "demo-metrics", "8080/actuator/prometheus");
+        k8sDeployService.deploy(deployment, client, "demo-metrics",
+                "8080/actuator/prometheus", "exkaset/gatling");
     }
 
 }

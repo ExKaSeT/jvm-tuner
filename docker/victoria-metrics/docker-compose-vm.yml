@@ -5,11 +5,16 @@ services:
     container_name: victoria-metrics
     ports:
       - "8428:8428"
+      - "2003:2003"
     volumes:
       - victoria-metrics-data:/victoria-metrics-data
+      - ./relabel.yaml:/etc/config/relabel.yaml
     command:
       - '--storageDataPath=/victoria-metrics-data'
       - '--retentionPeriod=1'
       - '--httpListenAddr=:8428'
+      - '-graphiteListenAddr=:2003'
+      - '-relabelConfig=/etc/config/relabel.yaml'
+#      - '-graphite.sanitizeMetricName'
 volumes:
   victoria-metrics-data:

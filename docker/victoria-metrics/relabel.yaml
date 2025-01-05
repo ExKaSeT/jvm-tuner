@@ -1,0 +1,8 @@
+- action: graphite
+  match: "*.*.*.*.*"
+  labels:
+    __name__: ${1}_${5}_total
+    class: $2
+    scn: $3
+    type: $4
+    metric: $5

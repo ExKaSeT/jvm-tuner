@@ -1,0 +1,7 @@
+name: demo-metrics
+services:
+  demo-metrics:
+    image: exkaset/demo-metrics
+    container_name: demo-metrics
+    ports:
+      - "8080:8080"

@@ -17,7 +17,6 @@ public class K8sDeployService {
     private static final String VM_AGENT_IMAGE = "victoriametrics/vmagent:latest";
     private static final String VM_AGENT_CONFIG_PATH = "/etc/vmagent/";
     private static final String VM_AGENT_CONFIG_FILE_NAME = "config.yaml";
-
     private static String VM_AGENT_CONFIG = """
             global:
               external_labels:
@@ -31,6 +30,19 @@ public class K8sDeployService {
                   - targets:
                       - %s
             """;
+    private static final String VM_AGENT_RELABEL_CONFIG_FILE_NAME = "relabel.yaml";
+    private static final String VM_AGENT_RELABEL_CONFIG = """
+            - action: graphite
+              match: "*.*.*.*.*"
+              labels:
+                __name__: ${1}_${5}_total
+                class: $2
+                scn: $3
+                type: $4
+                metric: $5
+                %s: %s
+            """;
+    private static final String GRAPHITE_PORT = "2003";
 
     @Value("${metrics.uuid-label-name}")
     private String uuidLabelName;
@@ -43,7 +55,8 @@ public class K8sDeployService {
         VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", "%s");
     }
 
-    public void deploy(Deployment app, KubernetesClient client, String appContainerName, String scrapePortWithPath) {
+    public void deploy(Deployment app, KubernetesClient client, String appContainerName,
+                       String scrapePortWithPath, String gatlingImage) {
         String namespace = client.getNamespace();
         var uuid = UUID.randomUUID().toString();
 
@@ -76,9 +89,10 @@ public class K8sDeployService {
         var vmAgentConfigInitContainer = new ContainerBuilder()
                 .withName("vm-agent-init-" + uuid)
                 .withImage("busybox")
-                .withCommand("sh", "-c", String.format("echo \"%s\" > %s%s",
+                .withCommand("sh", "-c", String.format("echo '%s' > %s%s; echo '%s' > %s%s",
                                 String.format(VM_AGENT_CONFIG, uuid, "http://localhost:" + scrapePortWithPath),
-                        VM_AGENT_CONFIG_PATH, VM_AGENT_CONFIG_FILE_NAME))
+                        VM_AGENT_CONFIG_PATH, VM_AGENT_CONFIG_FILE_NAME,
+                        String.format(VM_AGENT_RELABEL_CONFIG, uuidLabelName, uuid), VM_AGENT_CONFIG_PATH, VM_AGENT_RELABEL_CONFIG_FILE_NAME))
                 .withVolumeMounts(new VolumeMountBuilder()
                         .withName(vmAgentConfigVolumeName)
                         .withMountPath(VM_AGENT_CONFIG_PATH)
@@ -93,13 +107,21 @@ public class K8sDeployService {
                         .withContainerPort(8429)
                         .build())
                 .withArgs("-remoteWrite.url=" + metricsPushUrl,
-                        "-promscrape.config=" + VM_AGENT_CONFIG_PATH + VM_AGENT_CONFIG_FILE_NAME)
+                        "-promscrape.config=" + VM_AGENT_CONFIG_PATH + VM_AGENT_CONFIG_FILE_NAME,
+                        "-remoteWrite.relabelConfig=" + VM_AGENT_CONFIG_PATH + VM_AGENT_RELABEL_CONFIG_FILE_NAME,
+                        "-graphiteListenAddr=:" + GRAPHITE_PORT)
                 .withVolumeMounts(new VolumeMountBuilder()
                         .withName(vmAgentConfigVolumeName)
                         .withMountPath(VM_AGENT_CONFIG_PATH)
                         .build())
                 .build();
         app.getSpec().getTemplate().getSpec().getContainers().add(vmAgentContainer);
+
+        var gatlingContainer = new ContainerBuilder()
+                .withName("gatling-" + uuid)
+                .withImage(gatlingImage)
+                .build();
+        app.getSpec().getTemplate().getSpec().getContainers().add(gatlingContainer);
 
         client.apps().deployments().inNamespace(namespace).resource(app).create();
     }
