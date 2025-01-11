@@ -7,7 +7,6 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,6 +42,7 @@ public class K8sDeployService {
                 %s: %s
             """;
     private static final String GRAPHITE_PORT = "2003";
+    private static final Map<String, Quantity> VMAGENT_LIMITS = Map.of("cpu", Quantity.parse("250m"), "memory", Quantity.parse("250Mi"));
 
     @Value("${metrics.uuid-label-name}")
     private String uuidLabelName;
@@ -55,8 +55,8 @@ public class K8sDeployService {
         VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", "%s");
     }
 
-    public void deploy(Deployment app, KubernetesClient client, String appContainerName,
-                       String scrapePortWithPath, String gatlingImage) {
+    public void deploy(Deployment app, KubernetesClient client, String scrapePortWithPath,
+                       String gatlingImage) {
         String namespace = client.getNamespace();
         var uuid = UUID.randomUUID().toString();
 
@@ -67,20 +67,6 @@ public class K8sDeployService {
         appSpec.setReplicas(1);
         appSpec.setSelector(new LabelSelectorBuilder().withMatchLabels(Map.of("app", uuid)).build());
         appSpec.getTemplate().getMetadata().getLabels().put("app", uuid);
-
-        var appContainer = app.getSpec().getTemplate().getSpec().getContainers()
-                .stream()
-                .filter(c -> c.getName().equals(appContainerName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Container not found: " + appContainerName));
-
-        List<EnvVar> envVars = appContainer.getEnv();
-        boolean javaToolOptionsExists = envVars.stream()
-                .anyMatch(envVar -> envVar.getName().equals("JAVA_TOOL_OPTIONS"));
-        if (javaToolOptionsExists) {
-            throw new IllegalArgumentException("JAVA_TOOL_OPTIONS already exists in container: " + appContainerName);
-        }
-        envVars.add(new EnvVar("JAVA_TOOL_OPTIONS", "-XX:+UseContainerSupport", null));
 
         String vmAgentConfigVolumeName = "vm-agent-config-" + uuid;
         app.getSpec().getTemplate().getSpec().getVolumes().add(new VolumeBuilder().withName(vmAgentConfigVolumeName)
@@ -113,6 +99,10 @@ public class K8sDeployService {
                 .withVolumeMounts(new VolumeMountBuilder()
                         .withName(vmAgentConfigVolumeName)
                         .withMountPath(VM_AGENT_CONFIG_PATH)
+                        .build())
+                .withResources(new ResourceRequirementsBuilder()
+                        .addToLimits(VMAGENT_LIMITS)
+                        .addToRequests(VMAGENT_LIMITS)
                         .build())
                 .build();
         app.getSpec().getTemplate().getSpec().getContainers().add(vmAgentContainer);

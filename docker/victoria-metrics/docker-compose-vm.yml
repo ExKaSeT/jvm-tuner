@@ -11,7 +11,7 @@ services:
       - ./relabel.yaml:/etc/config/relabel.yaml
     command:
       - '--storageDataPath=/victoria-metrics-data'
-      - '--retentionPeriod=1'
+      - '--retentionPeriod=7d'
       - '--httpListenAddr=:8428'
       - '-graphiteListenAddr=:2003'
       - '-relabelConfig=/etc/config/relabel.yaml'
