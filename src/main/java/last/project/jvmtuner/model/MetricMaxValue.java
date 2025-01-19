@@ -12,8 +12,8 @@ public class MetricMaxValue {
 
     @EmbeddedId
     @AttributeOverride(name="tuningTest", column=@Column(name="tuning_test_uuid"))
-    @AttributeOverride(name="name", column=@Column(name="name"))
-    private MetricMaxValueId metricNameTest;
+    @AttributeOverride(name="query", column=@Column(name="query"))
+    private MetricMaxValueId metricQueryTest;
 
     private long value;
 }

@@ -18,5 +18,5 @@ public class MetricMaxValueId implements Serializable {
     @EqualsAndHashCode.Exclude
     private TuningTest tuningTest;
 
-    private String name;
+    private String query;
 }

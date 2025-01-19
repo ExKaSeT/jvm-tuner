@@ -31,6 +31,9 @@ public class TuningTest {
     @Column(name = "pod_name")
     private String podName;
 
+    @Column(name = "app_container_name", nullable = false)
+    private String appContainerName;
+
     @Column(name = "gatling_exec_command", nullable = false)
     private String gatlingExecCommand;
 
@@ -49,6 +52,6 @@ public class TuningTest {
     private Integer testDurationSec;
 
     /** Список метрик со значениями для прерывания теста */
-    @OneToMany(mappedBy = "metricNameTest.tuningTest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "metricQueryTest.tuningTest", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MetricMaxValue> metricMaxValues;
 }

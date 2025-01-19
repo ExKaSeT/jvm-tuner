@@ -36,18 +36,19 @@ public class TuningTestRepositoryTest {
                 .setUuid(this.uuid)
                 .setStatus(TuningTestStatus.NOT_READY)
                 .setDeploymentName("deployment-name")
-                .setGatlingExecCommand("exec gatling");
+                .setGatlingExecCommand("exec gatling")
+                .setAppContainerName("app_container");
         var metricMaxValues = List.of(
                 new MetricMaxValue()
                         .setValue(100)
-                        .setMetricNameTest(new MetricMaxValueId()
+                        .setMetricQueryTest(new MetricMaxValueId()
                                 .setTuningTest(test)
-                                .setName("some_metric1")),
+                                .setQuery("some_metric1")),
                 new MetricMaxValue()
                         .setValue(200)
-                        .setMetricNameTest(new MetricMaxValueId()
+                        .setMetricQueryTest(new MetricMaxValueId()
                                 .setTuningTest(test)
-                                .setName("some_metric2"))
+                                .setQuery("some_metric2"))
         );
         test.setMetricMaxValues(new ArrayList<>(metricMaxValues));
 

@@ -4,6 +4,7 @@ import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import jakarta.annotation.PostConstruct;
+import last.project.jvmtuner.util.K8sDeploymentUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -55,10 +56,11 @@ public class K8sDeployService {
         VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", "%s");
     }
 
-    public void deploy(Deployment app, KubernetesClient client, String appMetricPortWithPath,
+    public UUID deploy(Deployment app, KubernetesClient client, String appMetricPortWithPath,
                        String gatlingImage) {
         String namespace = client.getNamespace();
-        var uuid = UUID.randomUUID().toString();
+        var uuidObject = UUID.randomUUID();
+        var uuid = uuidObject.toString();
 
         var appMeta = app.getMetadata();
         appMeta.setName(uuid);
@@ -109,11 +111,13 @@ public class K8sDeployService {
         app.getSpec().getTemplate().getSpec().getContainers().add(vmAgentContainer);
 
         var gatlingContainer = new ContainerBuilder()
-                .withName("gatling-" + uuid)
+                .withName(K8sDeploymentUtil.getGatlingContainerName(uuidObject))
                 .withImage(gatlingImage)
                 .build();
         app.getSpec().getTemplate().getSpec().getContainers().add(gatlingContainer);
 
         client.apps().deployments().inNamespace(namespace).resource(app).create();
+
+        return uuidObject;
     }
 }

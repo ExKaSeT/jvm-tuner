@@ -14,25 +14,30 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: "status"
-                  type: "VARCHAR(255)"
+                  type: "VARCHAR"
                   constraints:
                     nullable: false
               - column:
                   name: "deployment"
-                  type: "TEXT"
+                  type: "VARCHAR"
                   constraints:
                     nullable: false
               - column:
                   name: "deployment_name"
-                  type: "VARCHAR(255)"
+                  type: "VARCHAR"
                   constraints:
                     nullable: false
               - column:
                   name: "pod_name"
-                  type: "VARCHAR(255)"
+                  type: "VARCHAR"
+              - column:
+                  name: "app_container_name"
+                  type: "VARCHAR"
+                  constraints:
+                    nullable: false
               - column:
                   name: "gatling_exec_command"
-                  type: "TEXT"
+                  type: "VARCHAR"
                   constraints:
                     nullable: false
               - column:
@@ -73,8 +78,8 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: "name"
-                  type: "VARCHAR(255)"
+                  name: "query"
+                  type: "VARCHAR"
                   constraints:
                     nullable: false
               - column:
@@ -83,7 +88,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            columnNames: "tuning_test_uuid, name"
+            columnNames: "tuning_test_uuid, query"
             tableName: "metric_max_values"
         - addForeignKeyConstraint:
             constraintName: "metric_max_values_tuning_test_uuid_fk"
