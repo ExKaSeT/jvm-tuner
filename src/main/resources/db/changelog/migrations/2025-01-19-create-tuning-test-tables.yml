@@ -1,0 +1,94 @@
+databaseChangeLog:
+  - changeSet:
+      id: "001-create-tuning-tests"
+      author: "admin"
+      changes:
+        - createTable:
+            tableName: "tuning_tests"
+            columns:
+              - column:
+                  name: "uuid"
+                  type: "UUID"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "status"
+                  type: "VARCHAR(255)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "deployment"
+                  type: "TEXT"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "deployment_name"
+                  type: "VARCHAR(255)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "pod_name"
+                  type: "VARCHAR(255)"
+              - column:
+                  name: "gatling_exec_command"
+                  type: "TEXT"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "deployed_time"
+                  type: "TIMESTAMP"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "start_test_timeout_sec"
+                  type: "INT"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "started_test_time"
+                  type: "TIMESTAMP"
+              - column:
+                  name: "test_duration_sec"
+                  type: "INT"
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: "idx_tuning_tests_status"
+            tableName: "tuning_tests"
+            columns:
+              - column:
+                  name: "status"
+
+  - changeSet:
+      id: "002-create-metric-max-values"
+      author: "admin"
+      changes:
+        - createTable:
+            tableName: "metric_max_values"
+            columns:
+              - column:
+                  name: "tuning_test_uuid"
+                  type: "UUID"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "name"
+                  type: "VARCHAR(255)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: "value"
+                  type: "BIGINT"
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            columnNames: "tuning_test_uuid, name"
+            tableName: "metric_max_values"
+        - addForeignKeyConstraint:
+            constraintName: "metric_max_values_tuning_test_uuid_fk"
+            baseTableName: "metric_max_values"
+            baseColumnNames: "tuning_test_uuid"
+            referencedTableName: "tuning_tests"
+            referencedColumnNames: "uuid"
+            onDelete: "CASCADE"

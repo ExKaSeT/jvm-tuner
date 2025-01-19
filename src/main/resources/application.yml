@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: jvm-tuner
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  messages:
+    basename: i18n/messages
+
+  liquibase.change-log: classpath:/db/changelog/db-changelog.xml
+
+metrics:
+  uuid-label-name: jvm-tuner-id
+  push-url: http://192.168.1.82:8428/api/v1/write
+  k8s:
+    service-account-name: jvm-tuner

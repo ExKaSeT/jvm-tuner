@@ -55,7 +55,7 @@ public class K8sDeployService {
         VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", "%s");
     }
 
-    public void deploy(Deployment app, KubernetesClient client, String scrapePortWithPath,
+    public void deploy(Deployment app, KubernetesClient client, String appMetricPortWithPath,
                        String gatlingImage) {
         String namespace = client.getNamespace();
         var uuid = UUID.randomUUID().toString();
@@ -67,6 +67,7 @@ public class K8sDeployService {
         appSpec.setReplicas(1);
         appSpec.setSelector(new LabelSelectorBuilder().withMatchLabels(Map.of("app", uuid)).build());
         appSpec.getTemplate().getMetadata().getLabels().put("app", uuid);
+        appSpec.getTemplate().getMetadata().getLabels().put("group", "jvm-tuner");
 
         String vmAgentConfigVolumeName = "vm-agent-config-" + uuid;
         app.getSpec().getTemplate().getSpec().getVolumes().add(new VolumeBuilder().withName(vmAgentConfigVolumeName)
@@ -76,7 +77,7 @@ public class K8sDeployService {
                 .withName("vm-agent-init-" + uuid)
                 .withImage("busybox")
                 .withCommand("sh", "-c", String.format("echo '%s' > %s%s; echo '%s' > %s%s",
-                                String.format(VM_AGENT_CONFIG, uuid, "http://localhost:" + scrapePortWithPath),
+                                String.format(VM_AGENT_CONFIG, uuid, "http://localhost:" + appMetricPortWithPath),
                         VM_AGENT_CONFIG_PATH, VM_AGENT_CONFIG_FILE_NAME,
                         String.format(VM_AGENT_RELABEL_CONFIG, uuidLabelName, uuid), VM_AGENT_CONFIG_PATH, VM_AGENT_RELABEL_CONFIG_FILE_NAME))
                 .withVolumeMounts(new VolumeMountBuilder()

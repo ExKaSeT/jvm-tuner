@@ -1,0 +1,15 @@
+version: "3.9"
+name: dev-env-jvm-tuner
+services:
+  postgres-server:
+    image: postgres:15.5
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg-jvm-tuner-data:/var/lib/postgresql/data
+
+volumes:
+  pg-jvm-tuner-data:

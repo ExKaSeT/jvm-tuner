@@ -1,21 +1,20 @@
-package last.project.jvmtuner;
+package last.project.jvmtuner.service;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
-import last.project.jvmtuner.service.K8sDeployService;
+import last.project.jvmtuner.annotation.AppTest;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@AppTest
 @RequiredArgsConstructor
-class JvmTunerApplicationTests {
+class K8sDeployServiceTest {
 
     private final K8sDeployService k8sDeployService;
 
     @Test
-    void contextLoads() {
+    void deployTest() {
         var client = new KubernetesClientBuilder().build();
         Deployment deployment = new KubernetesSerialization().unmarshal("""
                 kind: Deployment
