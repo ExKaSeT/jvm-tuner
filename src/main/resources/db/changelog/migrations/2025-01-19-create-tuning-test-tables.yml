@@ -1,99 +1,131 @@
 databaseChangeLog:
   - changeSet:
-      id: "001-create-tuning-tests"
-      author: "admin"
+      id: create-tuning-test-props-table
+      author: admin
       changes:
         - createTable:
-            tableName: "tuning_tests"
+            tableName: tuning_test_props
             columns:
               - column:
-                  name: "uuid"
-                  type: "UUID"
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: "status"
-                  type: "VARCHAR"
+                  name: prepared_deployment
+                  type: VARCHAR
                   constraints:
                     nullable: false
               - column:
-                  name: "deployment"
-                  type: "VARCHAR"
+                  name: app_container_name
+                  type: VARCHAR
                   constraints:
                     nullable: false
               - column:
-                  name: "deployment_name"
-                  type: "VARCHAR"
+                  name: gatling_exec_command
+                  type: VARCHAR
                   constraints:
                     nullable: false
               - column:
-                  name: "pod_name"
-                  type: "VARCHAR"
-              - column:
-                  name: "app_container_name"
-                  type: "VARCHAR"
+                  name: start_test_timeout_sec
+                  type: INT
                   constraints:
                     nullable: false
               - column:
-                  name: "gatling_exec_command"
-                  type: "VARCHAR"
+                  name: test_duration_sec
+                  type: INT
                   constraints:
                     nullable: false
-              - column:
-                  name: "deployed_time"
-                  type: "TIMESTAMP"
-                  constraints:
-                    nullable: false
-              - column:
-                  name: "start_test_timeout_sec"
-                  type: "INT"
-                  constraints:
-                    nullable: false
-              - column:
-                  name: "started_test_time"
-                  type: "TIMESTAMP"
-              - column:
-                  name: "test_duration_sec"
-                  type: "INT"
-                  constraints:
-                    nullable: false
-        - createIndex:
-            indexName: "idx_tuning_tests_status"
-            tableName: "tuning_tests"
-            columns:
-              - column:
-                  name: "status"
 
   - changeSet:
-      id: "002-create-metric-max-values"
-      author: "admin"
+      id: create-metric-max-values-table
+      author: admin
       changes:
         - createTable:
-            tableName: "metric_max_values"
+            tableName: metric_max_values
             columns:
               - column:
-                  name: "tuning_test_uuid"
-                  type: "UUID"
+                  name: tuning_test_props_id
+                  type: BIGINT
                   constraints:
                     nullable: false
               - column:
-                  name: "query"
-                  type: "VARCHAR"
+                  name: query
+                  type: VARCHAR
                   constraints:
                     nullable: false
               - column:
-                  name: "value"
-                  type: "BIGINT"
+                  name: value
+                  type: BIGINT
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            columnNames: "tuning_test_uuid, query"
-            tableName: "metric_max_values"
+            tableName: metric_max_values
+            columnNames: tuning_test_props_id, query
         - addForeignKeyConstraint:
-            constraintName: "metric_max_values_tuning_test_uuid_fk"
-            baseTableName: "metric_max_values"
-            baseColumnNames: "tuning_test_uuid"
-            referencedTableName: "tuning_tests"
-            referencedColumnNames: "uuid"
+            constraintName: fk_tuning_test_props_id_tuning_test_props
+            baseTableName: metric_max_values
+            baseColumnNames: tuning_test_props_id
+            referencedTableName: tuning_test_props
+            referencedColumnNames: id
             onDelete: "CASCADE"
+
+  - changeSet:
+      id: create-tuning-tests-table
+      author: admin
+      changes:
+        - createTable:
+            tableName: tuning_tests
+            columns:
+              - column:
+                  name: uuid
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deployment
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deployment_name
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: pod_name
+                  type: VARCHAR
+              - column:
+                  name: deployed_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_test_time
+                  type: TIMESTAMP
+              - column:
+                  name: tuning_test_props_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_tuning_test_props_id_tuning_test_props
+            baseTableName: tuning_tests
+            baseColumnNames: tuning_test_props_id
+            referencedTableName: tuning_test_props
+            referencedColumnNames: id
+            onDelete: "CASCADE"
+        - createIndex:
+            tableName: tuning_tests
+            columns:
+              - column:
+                  name: status
+            indexName: idx_tuning_tests_status

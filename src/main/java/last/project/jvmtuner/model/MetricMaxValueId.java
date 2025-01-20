@@ -13,10 +13,10 @@ import java.io.Serializable;
 @Accessors(chain = true)
 public class MetricMaxValueId implements Serializable {
     @ManyToOne
-    @JoinColumn(name = "tuning_test_uuid", nullable = false)
+    @JoinColumn(name = "tuning_test_props_id", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    private TuningTest tuningTest;
+    private TuningTestProps tuningTestProps;
 
     private String query;
 }

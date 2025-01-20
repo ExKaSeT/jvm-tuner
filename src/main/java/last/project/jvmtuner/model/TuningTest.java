@@ -2,10 +2,11 @@ package last.project.jvmtuner.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -31,27 +32,17 @@ public class TuningTest {
     @Column(name = "pod_name")
     private String podName;
 
-    @Column(name = "app_container_name", nullable = false)
-    private String appContainerName;
-
-    @Column(name = "gatling_exec_command", nullable = false)
-    private String gatlingExecCommand;
-
     /** UNIX epoch time деплоя deployment */
     @Column(name = "deployed_time", nullable = false)
     private Instant deployedTime;
-
-    @Column(name = "start_test_timeout_sec", nullable = false)
-    private Integer startTestTimeoutSec;
 
     /** Время запуска нагрузки */
     @Column(name = "started_test_time")
     private Instant startedTestTime;
 
-    @Column(name = "test_duration_sec", nullable = false)
-    private Integer testDurationSec;
-
-    /** Список метрик со значениями для прерывания теста */
-    @OneToMany(mappedBy = "metricQueryTest.tuningTest", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MetricMaxValue> metricMaxValues;
+    @ManyToOne
+    @JoinColumn(name = "tuning_test_props_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private TuningTestProps tuningTestProps;
 }

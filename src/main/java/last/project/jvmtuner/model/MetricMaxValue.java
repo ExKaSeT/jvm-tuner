@@ -11,9 +11,9 @@ import lombok.experimental.Accessors;
 public class MetricMaxValue {
 
     @EmbeddedId
-    @AttributeOverride(name="tuningTest", column=@Column(name="tuning_test_uuid"))
+    @AttributeOverride(name="tuningTestProps", column=@Column(name="tuning_test_props_id"))
     @AttributeOverride(name="query", column=@Column(name="query"))
-    private MetricMaxValueId metricQueryTest;
+    private MetricMaxValueId metricQueryProps;
 
     private long value;
 }

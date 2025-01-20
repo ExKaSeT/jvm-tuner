@@ -60,8 +60,10 @@ class K8sDeployServiceTest {
                           command: ["/bin/sh", "-c", "tail -f /dev/null"]""", Deployment.class);
 
 
-        k8sDeployService.deploy(deployment, client, "8080/actuator/prometheus",
-                "exkaset/gatling@sha256:4810aec32e1862453419c776217e63b346d7a05a499251ca6f840364b9e1c71f");
+        k8sDeployService.prepareDeployment(deployment, "8080/actuator/prometheus",
+                "exkaset/gatling@sha256:4810aec32e1862453419c776217e63b346d7a05a499251ca6f840364b9e1c71f",
+                "crypto");
+        k8sDeployService.deploy(deployment, client);
     }
 
 }

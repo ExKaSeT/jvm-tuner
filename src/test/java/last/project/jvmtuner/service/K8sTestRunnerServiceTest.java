@@ -1,7 +1,5 @@
 package last.project.jvmtuner.service;
 
-import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import last.project.jvmtuner.annotation.AppTest;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +14,11 @@ import java.util.List;
 class K8sTestRunnerServiceTest {
 
     private final K8sTestRunnerService k8sTestRunnerService;
+    private final TuningTestPropsService tuningTestPropsService;
 
     @Test
     void runTestTest() {
-        Deployment deployment = new KubernetesSerialization().unmarshal("""
+        String deployment = """
                 kind: Deployment
                 apiVersion: apps/v1
                 metadata:
@@ -60,17 +59,18 @@ class K8sTestRunnerServiceTest {
                               memory: 300Mi
                         - name: curl
                           image: alpine/curl
-                          command: ["/bin/sh", "-c", "tail -f /dev/null"]""", Deployment.class);
+                          command: ["/bin/sh", "-c", "tail -f /dev/null"]""";
 
-        var uuid = k8sTestRunnerService.runTest(deployment, "crypto", "8080/actuator/prometheus",
+        var props = tuningTestPropsService.saveTuningTestProps(deployment, "crypto",
+                "8080/actuator/prometheus",
                 "exkaset/gatling@sha256:4810aec32e1862453419c776217e63b346d7a05a499251ca6f840364b9e1c71f",
-                "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"", 60, 60,
+                "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"", 60, 180,
                 List.of(new MetricMaxValueDto()
                         .setQuery("sum(gatling_count_total{type=\"ko\"}) / sum(gatling_count_total{type=\"ok\"}) * 100")
                         .setMaxValue(10)
                 ));
 
-        log.info("UUID of test: " + uuid);
+        var test = k8sTestRunnerService.runTest(props);
+        log.info("UUID of test: " + test.getUuid());
     }
-
 }
