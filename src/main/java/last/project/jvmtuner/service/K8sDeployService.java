@@ -110,6 +110,8 @@ public class K8sDeployService {
                 .withImage(gatlingImage)
                 .build();
         app.getSpec().getTemplate().getSpec().getContainers().add(gatlingContainer);
+
+        app.getSpec().setReplicas(1);
     }
 
     public UUID deploy(Deployment app, KubernetesClient client) {
