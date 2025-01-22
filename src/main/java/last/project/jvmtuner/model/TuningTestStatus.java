@@ -4,5 +4,6 @@ public enum TuningTestStatus {
     NOT_READY,
     RUNNING,
     SUCCESS,
-    FAILED
+    FAILED_READY,
+    FAILED_RUNNING
 }

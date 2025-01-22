@@ -18,5 +18,6 @@ spring:
 metrics:
   uuid-label-name: jvm-tuner-id
   push-url: http://192.168.1.82:8428/api/v1/write
+  query-api: http://192.168.1.82:8428/api/v1
   k8s:
     service-account-name: jvm-tuner

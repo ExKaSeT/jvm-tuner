@@ -1,6 +1,7 @@
 package last.project.jvmtuner.service;
 
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import last.project.jvmtuner.dao.TuningTestRepository;
 import last.project.jvmtuner.model.TuningTest;
@@ -38,18 +39,7 @@ public class K8sTestStatusCheckerService {
             return;
         }
 
-        var deployedDeployment = K8sDeploymentUtil.deserialize(test.getDeployment());
-        var deployment = k8sClient.apps().deployments()
-                .inNamespace(deployedDeployment.getMetadata().getNamespace())
-                .withName(deployedDeployment.getMetadata().getName())
-                .get();
-
-        if (isNull(deployment)) {
-            log.error(String.format("Deployment '%s' not found in namespace '%s'", deployment.getMetadata().getName(),
-                    deployment.getMetadata().getNamespace()));
-            this.failTest(test, FAILED);
-            return;
-        }
+        var deployment = this.deserealizeAndCheckDeployment(test);
 
         var deploymentName = deployment.getMetadata().getName();
         var namespace = deployment.getMetadata().getNamespace();
@@ -69,12 +59,12 @@ public class K8sTestStatusCheckerService {
 
         if (pods.isEmpty()) {
             log.error(String.format("Can't find pod of deployment '%s' in namespace '%s'", deploymentName, namespace));
-            this.failTest(test, FAILED);
+            this.failTest(test, FAILED_READY);
             return;
         } else if (pods.size() > 1) {
             log.error(String.format("Too many pods (%d) of deployment '%s' in namespace '%s'", pods.size(),
                     deploymentName, namespace));
-            this.failTest(test, FAILED);
+            this.failTest(test, FAILED_READY);
             return;
         }
 
@@ -90,8 +80,72 @@ public class K8sTestStatusCheckerService {
                 this.parseExecCmd(test.getTuningTestProps().getGatlingExecCommand()));
 
         test.setStartedTestTime(Instant.now());
+        test.setPodName(pod.getMetadata().getName());
         test.setStatus(RUNNING);
         tuningTestRepository.save(test);
+    }
+
+    public void checkRunningTest(TuningTest test) {
+        var podName = test.getPodName();
+        if (isNull(podName)) {
+            log.error(String.format("Pod name is null in test '%s'", test.getUuid()));
+            this.failTest(test, FAILED_RUNNING);
+            return;
+        }
+
+        var deployment = this.deserealizeAndCheckDeployment(test);
+        var deploymentName = deployment.getMetadata().getName();
+        var namespace = deployment.getMetadata().getNamespace();
+
+        var pod = k8sClient.pods().inNamespace(namespace).withName(podName).get();
+        if (isNull(pod)) {
+            log.error(String.format("Can't find pod of deployment '%s' in namespace '%s'", deploymentName, namespace));
+            this.failTest(test, FAILED_RUNNING);
+            return;
+        }
+
+        var isHealthy = pod.getStatus().getContainerStatuses().stream()
+                .allMatch(containerStatus ->
+                        Boolean.TRUE.equals(containerStatus.getReady()) &&
+                                containerStatus.getRestartCount() == 0);
+        if (!isHealthy) {
+            log.error(String.format("Not healthy pod of deployment '%s' in namespace '%s'", deploymentName, namespace));
+            this.failTest(test, FAILED_RUNNING);
+            return;
+        }
+
+        // Проверяем метрики
+//        var startedTime = tuningTest.getStartedTestTime();
+//        var metricMaxValues = tuningTest.getTuningTestProps().getMetricMaxValues();
+//
+//        for (var metric : metricMaxValues) {
+//            String query = metric.getMetricQueryProps().getQuery();
+//            long maxValue = metric.getValue();
+//
+//            // Получаем текущее значение метрики
+//            long currentValue = metricsService.getMetricValue(query, startedTime);
+//
+//            if (currentValue > maxValue) {
+//                tuningTest.setStatus(TuningTestStatus.FAILED);
+//                testRepository.save(tuningTest);
+//                return false;
+//            }
+//        }
+    }
+
+    private Deployment deserealizeAndCheckDeployment(TuningTest test) {
+        var deployedDeployment = K8sDeploymentUtil.deserialize(test.getDeployment());
+        var deployment = k8sClient.apps().deployments()
+                .inNamespace(deployedDeployment.getMetadata().getNamespace())
+                .withName(deployedDeployment.getMetadata().getName())
+                .get();
+
+        if (isNull(deployment)) {
+            log.error(String.format("Deployment '%s' not found in namespace '%s'", deployment.getMetadata().getName(),
+                    deployment.getMetadata().getNamespace()));
+            this.failTest(test, FAILED_READY);
+        }
+        return deployment;
     }
 
     private void failTest(TuningTest test, TuningTestStatus newStatus) {
@@ -106,7 +160,7 @@ public class K8sTestStatusCheckerService {
                 test.getTuningTestProps().getStartTestTimeoutSec();
         if (timeout) {
             log.warn(String.format("Test '%s' timeout", test.getUuid()));
-            this.failTest(test, FAILED);
+            this.failTest(test, FAILED_READY);
         }
         return timeout;
     }
