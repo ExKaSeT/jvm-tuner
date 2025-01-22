@@ -12,7 +12,8 @@ import java.util.List;
 @Accessors(chain = true)
 public class TuningTestProps {
     @Id
-    @GeneratedValue(generator = "tuning_test_props_id_seq")
+    @GeneratedValue(generator = "tuning_test_props_id_seq", strategy = GenerationType.SEQUENCE)
+    @SequenceGenerator(name = "tuning_test_props_id_seq", sequenceName = "tuning_test_props_id_seq", allocationSize = 1)
     private Long id;
 
     @Column(name = "prepared_deployment", nullable = false)

@@ -1,22 +1,44 @@
 package last.project.jvmtuner.service;
 
-import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
-import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import last.project.jvmtuner.annotation.AppTest;
+import last.project.jvmtuner.dao.TuningTestRepository;
+import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
+import last.project.jvmtuner.model.TuningTest;
+import last.project.jvmtuner.model.TuningTestStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.MethodOrderer.*;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.test.annotation.Rollback;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
 
 @AppTest
+@Slf4j
+@Transactional
+@Rollback(false)
+@TestMethodOrder(OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @RequiredArgsConstructor
-class K8sDeployServiceTest {
+class K8sTestRunAndStatusCheckTest {
 
-    private final K8sDeployService k8sDeployService;
+    private final K8sTestRunnerService k8sTestRunnerService;
+    private final TuningTestPropsService tuningTestPropsService;
+    private final K8sTestStatusCheckerService k8sTestStatusCheckerService;
+    private final TuningTestRepository tuningTestRepository;
+
+    private TuningTest test;
 
     @Test
-    void deployTest() {
-        var client = new KubernetesClientBuilder().build();
-        Deployment deployment = new KubernetesSerialization().unmarshal("""
+    @Order(0)
+    void runTestTest() {
+        String deployment = """
                 kind: Deployment
                 apiVersion: apps/v1
                 metadata:
@@ -50,11 +72,11 @@ class K8sDeployServiceTest {
                               protocol: TCP
                           resources:
                             limits:
-                              cpu: 200m
-                              memory: 300Mi
+                              cpu: 800m
+                              memory: 800Mi
                             requests:
-                              cpu: 200m
-                              memory: 300Mi
+                              cpu: 800m
+                              memory: 800Mi
                           livenessProbe:
                             httpGet:
                               path: /actuator/health/liveness
@@ -77,13 +99,29 @@ class K8sDeployServiceTest {
                             failureThreshold: 3
                         - name: curl
                           image: alpine/curl
-                          command: ["/bin/sh", "-c", "tail -f /dev/null"]""", Deployment.class);
+                          command: ["/bin/sh", "-c", "tail -f /dev/null"]""";
 
+        var props = tuningTestPropsService.saveTuningTestProps(deployment, "crypto",
+                "8080/actuator/prometheus", "exkaset/gatling:1.0",
+                "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"",
+                60, 180,
+                List.of(new MetricMaxValueDto()
+                        .setQuery("sum(gatling_count_total{type=\"ko\"}) / sum(gatling_count_total{type=\"ok\"}) * 100")
+                        .setMaxValue(10)));
 
-        k8sDeployService.prepareDeployment(deployment, "8080/actuator/prometheus",
-                "exkaset/gatling@sha256:4810aec32e1862453419c776217e63b346d7a05a499251ca6f840364b9e1c71f",
-                "crypto");
-        k8sDeployService.deploy(deployment, client);
+        this.test = k8sTestRunnerService.runTest(props);
+        log.info("UUID of test: " + this.test.getUuid());
     }
 
+    @Test
+    @Order(1)
+    void notReadyStatusCheckTest() throws InterruptedException {
+        k8sTestStatusCheckerService.checkNotReadyTest(this.test);
+        Thread.sleep(40_000);
+        k8sTestStatusCheckerService.checkNotReadyTest(this.test);
+
+        this.test = tuningTestRepository.getById(this.test.getUuid());
+
+        assertEquals(TuningTestStatus.RUNNING, this.test.getStatus());
+    }
 }

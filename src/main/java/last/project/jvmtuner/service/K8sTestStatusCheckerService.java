@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,6 +26,7 @@ public class K8sTestStatusCheckerService {
 
     private final TuningTestRepository tuningTestRepository;
     private final KubernetesClient k8sClient;
+    private final K8sExecService k8sExecService;
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     public void checkTests() {
@@ -84,21 +86,52 @@ public class K8sTestStatusCheckerService {
             return;
         }
 
-        // TODO: start gatling
+        k8sExecService.execCommandInPod(pod.getMetadata().getName(), namespace,
+                this.parseExecCmd(test.getTuningTestProps().getGatlingExecCommand()));
+
+        test.setStartedTestTime(Instant.now());
+        test.setStatus(RUNNING);
+        tuningTestRepository.save(test);
     }
 
     private void failTest(TuningTest test, TuningTestStatus newStatus) {
         test.setStatus(newStatus);
         tuningTestRepository.save(test);
         log.warn(String.format("Test '%s' failed: %s", test.getUuid(), test.getStatus().name()));
+        // TODO: scale deployment replicas to 0
     }
 
     private boolean checkTestTimeout(TuningTest test) {
-        var timeout = Instant.now().getEpochSecond() - test.getDeployedTime().getEpochSecond() <
+        var timeout = Instant.now().getEpochSecond() - test.getDeployedTime().getEpochSecond() >
                 test.getTuningTestProps().getStartTestTimeoutSec();
         if (timeout) {
+            log.warn(String.format("Test '%s' timeout", test.getUuid()));
             this.failTest(test, FAILED);
         }
         return timeout;
+    }
+
+    private List<String> parseExecCmd(String cmd) {
+        var result = new ArrayList<String>();
+
+        boolean canSpaceSplit = true;
+        var builder = new StringBuilder();
+        for (char ch : cmd.toCharArray()) {
+            if (ch == '"') {
+                canSpaceSplit = !canSpaceSplit;
+                continue;
+            } else if (ch == ' ' && canSpaceSplit) {
+                if (!builder.isEmpty()) {
+                    result.add(builder.toString());
+                    builder.setLength(0);
+                }
+                continue;
+            }
+            builder.append(ch);
+        }
+        if (!builder.isEmpty()) {
+            result.add(builder.toString());
+        }
+        return result;
     }
 }
