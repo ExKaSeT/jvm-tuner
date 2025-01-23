@@ -21,3 +21,5 @@ metrics:
   query-api: http://192.168.1.82:8428/api/v1
   k8s:
     service-account-name: jvm-tuner
+  tuning-test:
+    check-delay-after-load-start-sec: 15

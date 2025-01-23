@@ -104,7 +104,7 @@ class K8sTestRunAndStatusCheckTest {
         var props = tuningTestPropsService.saveTuningTestProps(deployment, "crypto",
                 "8080/actuator/prometheus", "exkaset/gatling:1.0",
                 "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"",
-                60, 180,
+                60, 60,
                 List.of(new MetricMaxValueDto()
                         .setQuery("sum(gatling_count_total{type=\"ko\"}) / sum(gatling_count_total{type=\"ok\"}) * 100")
                         .setMaxValue(10)));
@@ -123,5 +123,21 @@ class K8sTestRunAndStatusCheckTest {
         this.test = tuningTestRepository.getById(this.test.getUuid());
 
         assertEquals(TuningTestStatus.RUNNING, this.test.getStatus());
+    }
+
+    @Test
+    @Order(2)
+    void runningStatusCheckTest() throws InterruptedException {
+        var testDurationSec = test.getTuningTestProps().getTestDurationSec();
+
+        k8sTestStatusCheckerService.checkRunningTest(this.test);
+        Thread.sleep(testDurationSec / 2 * 1000L);
+        k8sTestStatusCheckerService.checkRunningTest(this.test);
+        Thread.sleep(testDurationSec / 2 * 1000L);
+        k8sTestStatusCheckerService.checkRunningTest(this.test);
+
+        this.test = tuningTestRepository.getById(this.test.getUuid());
+
+        assertEquals(TuningTestStatus.SUCCESS, this.test.getStatus());
     }
 }
