@@ -106,7 +106,7 @@ class K8sTestRunAndStatusCheckTest {
                 "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"",
                 60, 60,
                 List.of(new MetricMaxValueDto()
-                        .setQuery("sum(gatling_count_total{type=\"ko\"}) / sum(gatling_count_total{type=\"ok\"}) * 100")
+                        .setQuery("sum(gatling_count_total{type=\"ko\", jvm_tuner_id}) / sum(gatling_count_total{type=\"ok\", jvm_tuner_id}) * 100")
                         .setMaxValue(10)));
 
         this.test = k8sTestRunnerService.runTest(props);
@@ -117,7 +117,7 @@ class K8sTestRunAndStatusCheckTest {
     @Order(1)
     void notReadyStatusCheckTest() throws InterruptedException {
         k8sTestStatusCheckerService.checkNotReadyTest(this.test);
-        Thread.sleep(40_000);
+        Thread.sleep(50_000);
         k8sTestStatusCheckerService.checkNotReadyTest(this.test);
 
         this.test = tuningTestRepository.getById(this.test.getUuid());

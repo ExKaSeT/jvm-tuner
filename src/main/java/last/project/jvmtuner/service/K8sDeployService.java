@@ -4,7 +4,8 @@ import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
+import last.project.jvmtuner.props.MetricsProps;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class K8sDeployService {
     public static final String GATLING_CONTAINER_NAME = "gatling";
     private static final String VM_AGENT_IMAGE = "victoriametrics/vmagent:latest";
@@ -48,15 +50,11 @@ public class K8sDeployService {
     private static final String GRAPHITE_PORT = "2003";
     private static final Map<String, Quantity> VMAGENT_LIMITS = Map.of("cpu", Quantity.parse("250m"), "memory", Quantity.parse("250Mi"));
 
-    @Value("${metrics.uuid-label-name}")
-    private String uuidLabelName;
-
-    @Value("${metrics.push-url}")
-    private String metricsPushUrl;
+    private final MetricsProps metricsProps;
 
     @PostConstruct
     private void init() {
-        VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, uuidLabelName, "%s", "%s");
+        VM_AGENT_CONFIG = String.format(VM_AGENT_CONFIG, metricsProps.getUuidLabelName(), "%s", "%s");
     }
 
     public void prepareDeployment(Deployment app, String appMetricPortWithPath, String gatlingImage,
@@ -76,7 +74,7 @@ public class K8sDeployService {
                 .withCommand("sh", "-c", String.format("echo '%s' > %s%s; echo '%s' > %s%s",
                                 String.format(VM_AGENT_CONFIG, UUID_DEFAULT, "http://localhost:" + appMetricPortWithPath),
                         VM_AGENT_CONFIG_PATH, VM_AGENT_CONFIG_FILE_NAME,
-                        String.format(VM_AGENT_RELABEL_CONFIG, uuidLabelName, UUID_DEFAULT), VM_AGENT_CONFIG_PATH, VM_AGENT_RELABEL_CONFIG_FILE_NAME))
+                        String.format(VM_AGENT_RELABEL_CONFIG, metricsProps.getUuidLabelName(), UUID_DEFAULT), VM_AGENT_CONFIG_PATH, VM_AGENT_RELABEL_CONFIG_FILE_NAME))
                 .withVolumeMounts(new VolumeMountBuilder()
                         .withName(VM_AGENT_CONFIG_VOLUME_NAME)
                         .withMountPath(VM_AGENT_CONFIG_PATH)
@@ -90,7 +88,7 @@ public class K8sDeployService {
                 .withPorts(new ContainerPortBuilder()
                         .withContainerPort(8429)
                         .build())
-                .withArgs("-remoteWrite.url=" + metricsPushUrl,
+                .withArgs("-remoteWrite.url=" + metricsProps.getPushUrl(),
                         "-promscrape.config=" + VM_AGENT_CONFIG_PATH + VM_AGENT_CONFIG_FILE_NAME,
                         "-remoteWrite.relabelConfig=" + VM_AGENT_CONFIG_PATH + VM_AGENT_RELABEL_CONFIG_FILE_NAME,
                         "-graphiteListenAddr=:" + GRAPHITE_PORT)

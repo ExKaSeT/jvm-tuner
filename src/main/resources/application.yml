@@ -16,10 +16,13 @@ spring:
   liquibase.change-log: classpath:/db/changelog/db-changelog.xml
 
 metrics:
-  uuid-label-name: jvm-tuner-id
+  uuid-label-name: jvm_tuner_id
   push-url: http://192.168.1.82:8428/api/v1/write
-  query-api: http://192.168.1.82:8428/api/v1
-  k8s:
-    service-account-name: jvm-tuner
+  query:
+    api: http://192.168.1.82:8428/api/v1
+    replace-with-label:
+      test-uuid: jvm_tuner_id
+      pod-name: pod_name
+      container-name: container_name
   tuning-test:
     check-delay-after-load-start-sec: 15

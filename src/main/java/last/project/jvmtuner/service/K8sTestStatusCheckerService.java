@@ -7,12 +7,13 @@ import last.project.jvmtuner.dao.TuningTestRepository;
 import last.project.jvmtuner.dto.metric.GetRangeMetricResponseDto;
 import last.project.jvmtuner.model.TuningTest;
 import last.project.jvmtuner.model.TuningTestStatus;
+import last.project.jvmtuner.props.MetricsProps;
 import last.project.jvmtuner.util.K8sDeploymentUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,10 +33,8 @@ public class K8sTestStatusCheckerService {
     private final KubernetesClient k8sClient;
     private final K8sExecService k8sExecService;
     private final MetricService metricService;
+    private final MetricsProps metricsProps;
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
-
-    @Value("${metrics.tuning-test.check-delay-after-load-start-sec}")
-    private Integer checkMetricsDelaySec;
 
     public void checkTests() {
         tuningTestRepository.getAllByStatus(NOT_READY).forEach(this::checkNotReadyTest);
@@ -65,14 +64,13 @@ public class K8sTestStatusCheckerService {
                 .getItems();
 
         if (pods.isEmpty()) {
-            log.error(String.format("Can't find pod of deployment '%s' in namespace '%s'", deploymentName, namespace));
             this.failTest(test, FAILED_READY);
-            return;
-        } else if (pods.size() > 1) {
-            log.error(String.format("Too many pods (%d) of deployment '%s' in namespace '%s'", pods.size(),
+            throw new IllegalStateException(String.format("Can't find pod of deployment '%s' in namespace '%s'",
                     deploymentName, namespace));
+        } else if (pods.size() > 1) {
             this.failTest(test, FAILED_READY);
-            return;
+            throw new IllegalStateException(String.format("Too many pods (%d) of deployment '%s' in namespace '%s'",
+                    pods.size(), deploymentName, namespace));
         }
 
         var pod = pods.get(0);
@@ -107,9 +105,9 @@ public class K8sTestStatusCheckerService {
 
         var pod = k8sClient.pods().inNamespace(namespace).withName(podName).get();
         if (isNull(pod)) {
-            log.error(String.format("Can't find pod of deployment '%s' in namespace '%s'", deploymentName, namespace));
             this.failTest(test, FAILED_RUNNING);
-            return;
+            throw new IllegalStateException(String.format("Can't find pod of deployment '%s' in namespace '%s'",
+                    deploymentName, namespace));
         }
 
         var isHealthy = pod.getStatus().getContainerStatuses().stream()
@@ -117,37 +115,37 @@ public class K8sTestStatusCheckerService {
                         Boolean.TRUE.equals(containerStatus.getReady()) &&
                                 containerStatus.getRestartCount() == 0);
         if (!isHealthy) {
-            log.error(String.format("Not healthy pod of deployment '%s' in namespace '%s'", deploymentName, namespace));
             this.failTest(test, FAILED_RUNNING);
-            return;
+            throw new IllegalStateException(String.format("Not healthy pod of deployment '%s' in namespace '%s'",
+                    deploymentName, namespace));
         }
 
         var startedTime = test.getStartedTestTime();
         var endTime = startedTime.plusSeconds(test.getTuningTestProps().getTestDurationSec());
 
-        if (Instant.now().isAfter(startedTime.plusSeconds(this.checkMetricsDelaySec))) {
+        if (Instant.now().isAfter(startedTime.plusSeconds(metricsProps.getTuningTest().getCheckDelayAfterLoadStartSec()))) {
             var metricMaxValues = test.getTuningTestProps().getMetricMaxValues();
             for (var metricMax : metricMaxValues) {
-                String query = metricMax.getMetricQueryProps().getQuery();
+                String query = metricService.replaceWithTestLabels(metricMax.getMetricQueryProps().getQuery(),
+                        test.getUuid().toString(), podName, test.getTuningTestProps().getAppContainerName());
                 var currentValues = metricService.rangeRequest(query, startedTime, endTime, 15);
-                long currentMax;
+                BigDecimal currentMax;
                 try {
                     var currentMaxString = currentValues.getData().getResult().get(0).getValues()
                             .stream()
                             .max(Comparator.comparing(GetRangeMetricResponseDto.Value::getValue))
                             .get()
                             .getValue();
-                    currentMax = Long.parseLong(currentMaxString);
+                    currentMax = new BigDecimal(currentMaxString);
                 } catch (Exception ex) {
-                    log.error(String.format("Failed fetching metric '%s' in test '%s'", query, test.getUuid()), ex);
                     this.failTest(test, FAILED_RUNNING);
-                    return;
+                    throw new IllegalStateException(String.format("Failed fetching metric '%s' in test '%s'",
+                            query, test.getUuid()), ex);
                 }
-                if (currentMax > metricMax.getValue()) {
-                    log.warn(String.format("Test '%s' failed due to metric '%s': %s > %s", test.getUuid(), query,
-                            currentMax, metricMax.getValue()));
+                if (currentMax.compareTo(BigDecimal.valueOf(metricMax.getValue())) > 0) {
                     this.failTest(test, FAILED_RUNNING);
-                    return;
+                    throw new IllegalStateException(String.format("Test '%s' failed due to metric '%s': %s > %s",
+                            test.getUuid(), query, currentMax, metricMax.getValue()));
                 }
             }
         }
@@ -170,8 +168,8 @@ public class K8sTestStatusCheckerService {
                 .get();
 
         if (isNull(deployment)) {
-            throw new IllegalStateException(String.format("Deployment '%s' not found in namespace '%s'", deployment.getMetadata().getName(),
-                    deployment.getMetadata().getNamespace()));
+            throw new IllegalStateException(String.format("Deployment '%s' not found in namespace '%s'",
+                    deployment.getMetadata().getName(), deployment.getMetadata().getNamespace()));
         }
         return deployment;
     }
