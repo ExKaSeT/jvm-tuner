@@ -1,6 +1,7 @@
 package last.project.jvmtuner.service;
 
 import last.project.jvmtuner.annotation.AppTest;
+import last.project.jvmtuner.dao.TuningTestMetricsRepository;
 import last.project.jvmtuner.dao.TuningTestRepository;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
 import last.project.jvmtuner.model.TuningTest;
@@ -32,6 +33,8 @@ class K8sTestRunAndStatusCheckTest {
     private final TuningTestPropsService tuningTestPropsService;
     private final K8sTestStatusCheckerService k8sTestStatusCheckerService;
     private final TuningTestRepository tuningTestRepository;
+    private final TuningTestMetricsRepository tuningTestMetricsRepository;
+    private final EndTestProcessService endTestProcessService;
 
     private TuningTest test;
 
@@ -106,7 +109,7 @@ class K8sTestRunAndStatusCheckTest {
                 "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"",
                 60, 60,
                 List.of(new MetricMaxValueDto()
-                        .setQuery("sum(gatling_count_total{type=\"ko\", jvm_tuner_id}) / sum(gatling_count_total{type=\"ok\", jvm_tuner_id}) * 100")
+                        .setQuery("sum(gatling_count_total{type=\"ko\", $jvm_tuner_id}) / sum(gatling_count_total{type=\"ok\", $jvm_tuner_id}) * 100")
                         .setMaxValue(10)));
 
         this.test = k8sTestRunnerService.runTest(props);
@@ -138,6 +141,22 @@ class K8sTestRunAndStatusCheckTest {
 
         this.test = tuningTestRepository.getById(this.test.getUuid());
 
-        assertEquals(TuningTestStatus.SUCCESS, this.test.getStatus());
+        assertEquals(TuningTestStatus.ENDED, this.test.getStatus());
+    }
+
+    @Test
+    @Order(3)
+    void endedStatusCheckTest() {
+        endTestProcessService.processEndTest(this.test);
+
+        this.test = tuningTestRepository.getById(this.test.getUuid());
+        var metrics = tuningTestMetricsRepository.getById(this.test.getUuid());
+
+        assertEquals(TuningTestStatus.PROCESSED, this.test.getStatus());
+        assertNotNull(metrics.getCpuUsageAvg());
+        assertNotNull(metrics.getCpuThrottlingAvg());
+        assertNotNull(metrics.getMemoryUsageAvg());
+        assertNotNull(metrics.getMemoryWssAvg());
+        assertNotNull(metrics.getMemoryRssAvg());
     }
 }

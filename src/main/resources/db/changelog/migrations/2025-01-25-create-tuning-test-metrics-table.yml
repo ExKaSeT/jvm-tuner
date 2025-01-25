@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-tuning-test-metrics
+      author: admin
+      changes:
+        - createTable:
+            tableName: tuning_test_metrics
+            columns:
+              - column:
+                  name: tuning_test_uuid
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: "Primary key and reference to tuning_tests.uuid"
+              - column:
+                  name: cpu_usage_avg
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+                  remarks: "Average CPU usage in percentage"
+              - column:
+                  name: cpu_throttling_avg
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+                  remarks: "Average CPU throttling in percentage"
+              - column:
+                  name: memory_usage_avg
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+                  remarks: "Average memory usage in megabytes"
+              - column:
+                  name: memory_wss_avg
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+                  remarks: "Average working set size (WSS) in megabytes"
+              - column:
+                  name: memory_rss_avg
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+                  remarks: "Average resident set size (RSS) in megabytes"
+        - addForeignKeyConstraint:
+            baseTableName: tuning_test_metrics
+            baseColumnNames: tuning_test_uuid
+            constraintName: fk_tuning_test_metrics_tuning_test
+            referencedTableName: tuning_tests
+            referencedColumnNames: uuid
+            onDelete: CASCADE

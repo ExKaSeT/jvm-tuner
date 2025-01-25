@@ -16,7 +16,7 @@ class MetricServiceTest {
     void getRangeMetricTest() {
         var result = metricService
                 .rangeRequest("gatling_count_total",
-                Instant.ofEpochSecond(1737562261L), Instant.ofEpochSecond(1737562501L), 15);
+                Instant.ofEpochSecond(1737562261L), Instant.ofEpochSecond(1737562501L));
 
         System.out.println(result);
     }

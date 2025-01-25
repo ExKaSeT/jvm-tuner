@@ -29,22 +29,32 @@ public class MetricService {
                 .getBody();
     }
 
+    public GetRangeMetricResponseDto rangeRequest(String query, Instant start, Instant end) {
+        return this.rangeRequest(query, start, end, metricsProps.getQuery().getStepSec());
+    }
+
     public String replaceWithTestLabels(String query, @Nullable String testUuid, @Nullable String podName,
                                         @Nullable String containerName) {
         var replaceInfo = metricsProps.getQuery().getReplaceWithLabel();
         if (nonNull(testUuid)) {
-            query = query.replace(replaceInfo.getTestUuid(),
-                    String.format("%s=\"%s\"", replaceInfo.getTestUuid(), testUuid));
+            query = query.replace(replaceInfo.getTestUuid(), String.format("%s=\"%s\"",
+                    this.removeLabelEscaping(replaceInfo.getTestUuid()), testUuid));
         }
         if (nonNull(podName)) {
-            query = query.replace(replaceInfo.getPodName(),
-                    String.format("%s=\"%s\"", replaceInfo.getPodName(), podName));
+            query = query.replace(replaceInfo.getPodName(), String.format("%s=\"%s\"",
+                    this.removeLabelEscaping(replaceInfo.getPodName()), podName));
         }
         if (nonNull(containerName)) {
-            query = query.replace(replaceInfo.getContainerName(),
-                    String.format("%s=\"%s\"", replaceInfo.getContainerName(), containerName));
+            query = query.replace(replaceInfo.getContainerName(), String.format("%s=\"%s\"",
+                    this.removeLabelEscaping(replaceInfo.getContainerName()), containerName));
         }
-
         return query;
+    }
+
+    private String removeLabelEscaping(String label) {
+        if (label.startsWith("$")) {
+            return label.substring(1);
+        }
+        return label;
     }
 }

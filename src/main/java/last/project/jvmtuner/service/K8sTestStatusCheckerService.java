@@ -34,10 +34,21 @@ public class K8sTestStatusCheckerService {
     private final K8sExecService k8sExecService;
     private final MetricService metricService;
     private final MetricsProps metricsProps;
+    private final EndTestProcessService endTestProcessService;
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     public void checkTests() {
-        tuningTestRepository.getAllByStatus(NOT_READY).forEach(this::checkNotReadyTest);
+        tuningTestRepository.getAllByStatus(NOT_READY).stream()
+                .map(test -> (Runnable) () -> this.checkNotReadyTest(test))
+                .forEach(executorService::submit);
+
+        tuningTestRepository.getAllByStatus(RUNNING).stream()
+                .map(test -> (Runnable) () -> this.checkRunningTest(test))
+                .forEach(executorService::submit);
+
+        tuningTestRepository.getAllByStatus(ENDED).stream()
+                .map(test -> (Runnable) () -> endTestProcessService.processEndTest(test))
+                .forEach(executorService::submit);
     }
 
     public void checkNotReadyTest(TuningTest test) {
@@ -126,11 +137,11 @@ public class K8sTestStatusCheckerService {
         if (Instant.now().isAfter(startedTime.plusSeconds(metricsProps.getTuningTest().getCheckDelayAfterLoadStartSec()))) {
             var metricMaxValues = test.getTuningTestProps().getMetricMaxValues();
             for (var metricMax : metricMaxValues) {
-                String query = metricService.replaceWithTestLabels(metricMax.getMetricQueryProps().getQuery(),
+                var query = metricService.replaceWithTestLabels(metricMax.getMetricQueryProps().getQuery(),
                         test.getUuid().toString(), podName, test.getTuningTestProps().getAppContainerName());
-                var currentValues = metricService.rangeRequest(query, startedTime, endTime, 15);
                 BigDecimal currentMax;
                 try {
+                    var currentValues = metricService.rangeRequest(query, startedTime, endTime);
                     var currentMaxString = currentValues.getData().getResult().get(0).getValues()
                             .stream()
                             .max(Comparator.comparing(GetRangeMetricResponseDto.Value::getValue))
@@ -151,7 +162,7 @@ public class K8sTestStatusCheckerService {
         }
 
         if (Instant.now().isAfter(endTime)) {
-            test.setStatus(SUCCESS);
+            test.setStatus(ENDED);
             test = tuningTestRepository.save(test);
             log.info(String.format("Test '%s' status changed to %s", test.getUuid(), test.getStatus()));
             this.deploymentReplicasToZero(test);

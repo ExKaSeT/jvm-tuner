@@ -45,4 +45,10 @@ public class TuningTest {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private TuningTestProps tuningTestProps;
+
+    @OneToOne(mappedBy = "tuningTest", fetch = FetchType.LAZY)
+    @PrimaryKeyJoinColumn
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private TuningTestMetrics tuningTestMetrics;
 }

@@ -18,6 +18,8 @@ public class MetricsProps {
         @NotNull
         private String api;
         @NotNull
+        private Integer stepSec;
+        @NotNull
         private ReplaceWithLabel replaceWithLabel;
     }
     @Data

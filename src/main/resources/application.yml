@@ -19,10 +19,18 @@ metrics:
   uuid-label-name: jvm_tuner_id
   push-url: http://192.168.1.82:8428/api/v1/write
   query:
-    api: http://192.168.1.82:8428/api/v1
-    replace-with-label:
-      test-uuid: jvm_tuner_id
-      pod-name: pod_name
-      container-name: container_name
+    api: http://localhost:8428/api/v1
+    step-sec: 15
+    replace-with-label: # в указанные лейблы подставятся значения текущего теста; '$' в начале при подстановке удаляются
+      test-uuid: $jvm_tuner_id
+      pod-name: $pod
+      container-name: $container
   tuning-test:
     check-delay-after-load-start-sec: 15
+
+metric-queries: # prometheus запросы для получения метрик
+  cpu-usage-avg: rate(container_cpu_usage_seconds_total{$pod, $container}[30s]) * 100
+  cpu-throttling-avg: increase(container_cpu_cfs_throttled_periods_total{$pod, $container}[30s]) / increase(container_cpu_cfs_periods_total{$pod, $container}[30s]) * 100
+  memory-usage-avg: container_memory_usage_bytes{$pod, $container} / 1024 / 1024
+  memory-wss-avg: container_memory_working_set_bytes{$pod, $container} / 1024 / 1024
+  memory-rss-avg: container_memory_rss{$pod, $container} / 1024 / 1024
