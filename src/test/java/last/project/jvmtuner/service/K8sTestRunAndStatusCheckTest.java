@@ -6,6 +6,7 @@ import last.project.jvmtuner.dao.TuningTestRepository;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
 import last.project.jvmtuner.model.TuningTest;
 import last.project.jvmtuner.model.TuningTestStatus;
+import last.project.jvmtuner.util.K8sDeploymentUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer.*;
@@ -112,7 +113,8 @@ class K8sTestRunAndStatusCheckTest {
                         .setQuery("sum(gatling_count_total{type=\"ko\", $jvm_tuner_id}) / sum(gatling_count_total{type=\"ok\", $jvm_tuner_id}) * 100")
                         .setMaxValue(10)));
 
-        this.test = k8sTestRunnerService.runTest(props);
+        this.test = k8sTestRunnerService.runTest(props, K8sDeploymentUtil
+                .addJvmOptions(List.of("-XX:+PrintCommandLineFlags", "-Xmx400M"), "crypto"));
         log.info("UUID of test: " + this.test.getUuid());
     }
 

@@ -1,5 +1,6 @@
 package last.project.jvmtuner.service;
 
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import last.project.jvmtuner.dao.TuningTestRepository;
 import last.project.jvmtuner.model.*;
@@ -9,8 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.function.Consumer;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class K8sTestRunnerService {
 
@@ -18,9 +21,10 @@ public class K8sTestRunnerService {
     private final TuningTestRepository tuningTestRepository;
     private final KubernetesClient k8sClient;
 
-    @Transactional
-    public TuningTest runTest(TuningTestProps tuningTestProps) {
+    public TuningTest runTest(TuningTestProps tuningTestProps, Consumer<Deployment> modify) {
         var deployment = K8sDeploymentUtil.deserialize(tuningTestProps.getPreparedDeployment());
+        modify.accept(deployment);
+
         var uuid = k8sDeployService.deploy(deployment, k8sClient);
 
         var test = new TuningTest()
@@ -32,5 +36,9 @@ public class K8sTestRunnerService {
                 .setTuningTestProps(tuningTestProps);
 
         return tuningTestRepository.save(test);
+    }
+
+    public TuningTest runTest(TuningTestProps tuningTestProps) {
+        return this.runTest(tuningTestProps, deployment -> {});
     }
 }

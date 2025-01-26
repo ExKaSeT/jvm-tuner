@@ -21,7 +21,7 @@ metrics:
   query:
     api: http://localhost:8428/api/v1
     step-sec: 15
-    replace-with-label: # в указанные лейблы подставятся значения текущего теста; '$' в начале при подстановке удаляются
+    replace-with-label: # в указанные лейблы подставятся значения текущего теста; '$' в начале при подстановке удаляется
       test-uuid: $jvm_tuner_id
       pod-name: $pod
       container-name: $container
