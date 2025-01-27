@@ -1,12 +1,14 @@
 package last.project.jvmtuner.model.tuning_test;
 
 import jakarta.persistence.*;
+import last.project.jvmtuner.model.tuning_task.TuningTaskTest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -51,4 +53,10 @@ public class TuningTest {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private TuningTestMetrics tuningTestMetrics;
+
+    @OneToMany(mappedBy = "test")
+    @PrimaryKeyJoinColumn
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<TuningTaskTest> taskTests;
 }

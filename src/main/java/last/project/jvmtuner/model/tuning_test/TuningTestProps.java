@@ -1,6 +1,7 @@
 package last.project.jvmtuner.model.tuning_test;
 
 import jakarta.persistence.*;
+import last.project.jvmtuner.model.tuning_task.TuningTask;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -37,4 +38,7 @@ public class TuningTestProps {
 
     @OneToMany(mappedBy = "tuningTestProps", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TuningTest> tuningTests;
+
+    @OneToMany(mappedBy = "tuningTestProps", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TuningTask> tuningTasks;
 }

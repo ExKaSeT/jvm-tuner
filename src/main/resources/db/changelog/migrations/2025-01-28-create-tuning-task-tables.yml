@@ -1,0 +1,101 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-tuning-tasks-table
+      author: admin
+      changes:
+        - createTable:
+            tableName: tuning_tasks
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: mode
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mode_data
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_time
+                  type: TIMESTAMP
+              - column:
+                  name: tuning_test_props_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_tuning_tasks_tuning_test_props
+            baseTableName: tuning_tasks
+            baseColumnNames: tuning_test_props_id
+            referencedTableName: tuning_test_props
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: create-tuning-tasks-tests-table
+      author: admin
+      changes:
+        - createTable:
+            tableName: tuning_tasks_tests
+            columns:
+              - column:
+                  name: task_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tuning_test_uuid
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: processed
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: tuning_tasks_tests
+            columnNames: task_id, tuning_test_uuid
+        - addForeignKeyConstraint:
+            constraintName: fk_tuning_tasks_tests_tuning_tasks
+            baseTableName: tuning_tasks_tests
+            baseColumnNames: task_id
+            referencedTableName: tuning_tasks
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_tuning_tasks_tests_tuning_tests
+            baseTableName: tuning_tasks_tests
+            baseColumnNames: tuning_test_uuid
+            referencedTableName: tuning_tests
+            referencedColumnNames: uuid
+            onDelete: CASCADE
+        - createIndex:
+            tableName: tuning_tasks_tests
+            columns:
+              - column:
+                  name: processed
+            indexName: idx_tuning_tasks_tests_processed
