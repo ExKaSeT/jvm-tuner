@@ -1,10 +1,10 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.service.tuning_test;
 
-import last.project.jvmtuner.dao.TuningTestPropsRepository;
+import last.project.jvmtuner.dao.tuning_test.TuningTestPropsRepository;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
-import last.project.jvmtuner.model.MetricMaxValue;
-import last.project.jvmtuner.model.MetricMaxValueId;
-import last.project.jvmtuner.model.TuningTestProps;
+import last.project.jvmtuner.model.tuning_test.MetricMaxValue;
+import last.project.jvmtuner.model.tuning_test.MetricMaxValueId;
+import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.util.K8sDeploymentUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

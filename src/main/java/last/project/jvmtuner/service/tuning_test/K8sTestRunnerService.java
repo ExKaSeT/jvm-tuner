@@ -1,9 +1,11 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.service.tuning_test;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import last.project.jvmtuner.dao.TuningTestRepository;
-import last.project.jvmtuner.model.*;
+import last.project.jvmtuner.dao.tuning_test.TuningTestRepository;
+import last.project.jvmtuner.model.tuning_test.TuningTest;
+import last.project.jvmtuner.model.tuning_test.TuningTestProps;
+import last.project.jvmtuner.model.tuning_test.TuningTestStatus;
 import last.project.jvmtuner.util.K8sDeploymentUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

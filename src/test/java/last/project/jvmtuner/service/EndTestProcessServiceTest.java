@@ -1,9 +1,10 @@
 package last.project.jvmtuner.service;
 
 import last.project.jvmtuner.annotation.AppTest;
-import last.project.jvmtuner.dao.TuningTestMetricsRepository;
-import last.project.jvmtuner.dao.TuningTestRepository;
-import last.project.jvmtuner.model.TuningTestStatus;
+import last.project.jvmtuner.dao.tuning_test.TuningTestMetricsRepository;
+import last.project.jvmtuner.dao.tuning_test.TuningTestRepository;
+import last.project.jvmtuner.model.tuning_test.TuningTestStatus;
+import last.project.jvmtuner.service.tuning_test.EndTestProcessService;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;

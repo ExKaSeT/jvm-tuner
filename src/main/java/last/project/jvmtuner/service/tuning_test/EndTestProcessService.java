@@ -1,11 +1,12 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.service.tuning_test;
 
-import last.project.jvmtuner.dao.TuningTestMetricsRepository;
-import last.project.jvmtuner.dao.TuningTestRepository;
-import last.project.jvmtuner.model.TuningTest;
-import last.project.jvmtuner.model.TuningTestMetrics;
-import last.project.jvmtuner.model.TuningTestStatus;
+import last.project.jvmtuner.dao.tuning_test.TuningTestMetricsRepository;
+import last.project.jvmtuner.dao.tuning_test.TuningTestRepository;
+import last.project.jvmtuner.model.tuning_test.TuningTest;
+import last.project.jvmtuner.model.tuning_test.TuningTestMetrics;
+import last.project.jvmtuner.model.tuning_test.TuningTestStatus;
 import last.project.jvmtuner.props.MetricQueriesProps;
+import last.project.jvmtuner.service.MetricService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

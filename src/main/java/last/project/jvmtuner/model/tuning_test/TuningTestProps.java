@@ -1,4 +1,4 @@
-package last.project.jvmtuner.model;
+package last.project.jvmtuner.model.tuning_test;
 
 import jakarta.persistence.*;
 import lombok.Data;

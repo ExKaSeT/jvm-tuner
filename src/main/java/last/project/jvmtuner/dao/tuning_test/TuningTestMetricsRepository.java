@@ -1,6 +1,6 @@
-package last.project.jvmtuner.dao;
+package last.project.jvmtuner.dao.tuning_test;
 
-import last.project.jvmtuner.model.TuningTestMetrics;
+import last.project.jvmtuner.model.tuning_test.TuningTestMetrics;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;

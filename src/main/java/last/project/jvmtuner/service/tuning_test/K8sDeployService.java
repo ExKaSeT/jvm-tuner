@@ -1,4 +1,4 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.service.tuning_test;
 
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;

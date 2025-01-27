@@ -1,9 +1,9 @@
 package last.project.jvmtuner.repository;
 
 import last.project.jvmtuner.annotation.AppTest;
-import last.project.jvmtuner.dao.TuningTestPropsRepository;
-import last.project.jvmtuner.dao.TuningTestRepository;
-import last.project.jvmtuner.model.*;
+import last.project.jvmtuner.dao.tuning_test.TuningTestPropsRepository;
+import last.project.jvmtuner.dao.tuning_test.TuningTestRepository;
+import last.project.jvmtuner.model.tuning_test.*;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.orm.jpa.JpaObjectRetrievalFailureException;
@@ -23,7 +23,7 @@ public class TuningTestRepositoriesTest {
 
     private final TuningTestRepository tuningTestRepository;
     private final TuningTestPropsRepository tuningTestPropsRepository;
-    private UUID uuid = UUID.fromString("9438909e-e058-4b2f-9238-7294141a3081");
+    private final UUID uuid = UUID.fromString("9438909e-e058-4b2f-9238-7294141a3081");
 
     @Test
     void createTuningTest() {
