@@ -8,7 +8,7 @@ import java.time.Instant;
 
 @AppTest
 @RequiredArgsConstructor
-class MetricServiceTest {
+public class MetricServiceTest {
 
     private final MetricService metricService;
 

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AppTest
 @Transactional
 @RequiredArgsConstructor
-class EndTestProcessServiceTest {
+public class EndTestProcessServiceTest {
 
     private static final UUID testUuid = UUID.fromString("2a884ce7-6c59-49e7-89d5-2b7f0a9145a9");
 
@@ -26,11 +26,12 @@ class EndTestProcessServiceTest {
     private final EndTestProcessService endTestProcessService;
 
     @Test
-    void getRangeMetricTest() {
-        var test = tuningTestRepository.getById(testUuid);
+    void processEndedTestTest() {
+        tuningTestMetricsRepository.deleteById(testUuid);
+        var test = tuningTestRepository.findById(testUuid).get();
 
-        endTestProcessService.processEndTest(test);
-        var metrics = tuningTestMetricsRepository.getById(testUuid);
+        endTestProcessService.processEndedTest(testUuid);
+        var metrics = tuningTestMetricsRepository.findById(testUuid).get();
 
         assertEquals(TuningTestStatus.PROCESSED, test.getStatus());
         assertNotNull(metrics.getCpuUsageAvg());

@@ -34,3 +34,12 @@ metric-queries: # prometheus запросы для получения метри
   memory-usage-avg: container_memory_usage_bytes{$pod, $container} / 1024 / 1024
   memory-wss-avg: container_memory_working_set_bytes{$pod, $container} / 1024 / 1024
   memory-rss-avg: container_memory_rss{$pod, $container} / 1024 / 1024
+
+scheduler:
+  enabled: true
+  process-tests-cron: '0/10 * * ? * *'
+
+modes:
+  max-heap-size:
+    end-step-mb: 10
+    retry-on-fail-count: 2

@@ -23,9 +23,9 @@ public class TuningTask {
 
     @Column(name = "mode", nullable = false)
     @Enumerated(EnumType.STRING)
-    private TuningTaskMode mode;
+    private TuningMode mode;
 
-    @Column(name = "mode_data", nullable = false)
+    @Column(name = "mode_data")
     private String modeData;
 
     @Column(name = "status", nullable = false)

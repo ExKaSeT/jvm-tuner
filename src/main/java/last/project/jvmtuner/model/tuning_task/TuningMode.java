@@ -1,5 +1,5 @@
 package last.project.jvmtuner.model.tuning_task;
 
-public enum TuningTaskMode {
+public enum TuningMode {
     MAX_HEAP_SIZE
 }

@@ -8,10 +8,15 @@ import last.project.jvmtuner.model.tuning_test.TuningTestStatus;
 import last.project.jvmtuner.props.MetricQueriesProps;
 import last.project.jvmtuner.service.MetricService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class EndTestProcessService {
 
@@ -20,8 +25,10 @@ public class EndTestProcessService {
     private final TuningTestMetricsRepository testMetricsRepository;
     private final MetricQueriesProps metricQueriesProps;
 
-    @Transactional
-    public void processEndTest(TuningTest test) {
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void processEndedTest(UUID testUuid) {
+        var test = tuningTestRepository.findById(testUuid).get();
+
         test.setStatus(TuningTestStatus.PROCESSED);
         test = tuningTestRepository.save(test);
 
@@ -33,6 +40,8 @@ public class EndTestProcessService {
                 .setMemoryWssAvg(this.makeQueryAndCalculateAvg(metricQueriesProps.getMemoryWssAvg(), test))
                 .setMemoryRssAvg(this.makeQueryAndCalculateAvg(metricQueriesProps.getMemoryRssAvg(), test));
         testMetricsRepository.save(metrics);
+
+        log.info(String.format("Test '%s' processed", test.getUuid()));
     }
 
     private double makeQueryAndCalculateAvg(String query, TuningTest test) {

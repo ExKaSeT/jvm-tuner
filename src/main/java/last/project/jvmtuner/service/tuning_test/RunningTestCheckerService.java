@@ -13,14 +13,15 @@ import last.project.jvmtuner.util.K8sDeploymentUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.UUID;
 
 import static java.util.Objects.isNull;
 import static last.project.jvmtuner.model.tuning_test.TuningTestStatus.*;
@@ -28,37 +29,21 @@ import static last.project.jvmtuner.model.tuning_test.TuningTestStatus.*;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class K8sTestStatusCheckerService {
+public class RunningTestCheckerService {
 
     private final TuningTestRepository tuningTestRepository;
     private final KubernetesClient k8sClient;
     private final K8sExecService k8sExecService;
     private final MetricService metricService;
     private final MetricsProps metricsProps;
-    private final EndTestProcessService endTestProcessService;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
-    public void checkTests() {
-        tuningTestRepository.getAllByStatus(NOT_READY).stream()
-                .map(test -> (Runnable) () -> this.checkNotReadyTest(test))
-                .forEach(executorService::submit);
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void checkNotReadyTest(UUID testUuid) {
+        var test = tuningTestRepository.findById(testUuid).get();
 
-        tuningTestRepository.getAllByStatus(RUNNING).stream()
-                .map(test -> (Runnable) () -> this.checkRunningTest(test))
-                .forEach(executorService::submit);
-
-        tuningTestRepository.getAllByStatus(ENDED).stream()
-                .map(test -> (Runnable) () -> endTestProcessService.processEndTest(test))
-                .forEach(executorService::submit);
-    }
-
-    public void checkNotReadyTest(TuningTest test) {
-        if (this.checkTestTimeout(test)) {
-            return;
-        }
+        this.checkTestTimeout(test);
 
         var deployment = this.deserealizeAndCheckDeployment(test);
-
         var deploymentName = deployment.getMetadata().getName();
         var namespace = deployment.getMetadata().getNamespace();
 
@@ -76,11 +61,9 @@ public class K8sTestStatusCheckerService {
                 .getItems();
 
         if (pods.isEmpty()) {
-            this.failTest(test, FAILED_READY);
             throw new IllegalStateException(String.format("Can't find pod of deployment '%s' in namespace '%s'",
                     deploymentName, namespace));
         } else if (pods.size() > 1) {
-            this.failTest(test, FAILED_READY);
             throw new IllegalStateException(String.format("Too many pods (%d) of deployment '%s' in namespace '%s'",
                     pods.size(), deploymentName, namespace));
         }
@@ -103,12 +86,13 @@ public class K8sTestStatusCheckerService {
         log.info(String.format("Test '%s' status changed to %s", test.getUuid(), test.getStatus()));
     }
 
-    public void checkRunningTest(TuningTest test) {
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void checkRunningTest(UUID testUuid) {
+        var test = tuningTestRepository.findById(testUuid).get();
+
         var podName = test.getPodName();
         if (isNull(podName)) {
-            log.error(String.format("Pod name is null in test '%s'", test.getUuid()));
-            this.failTest(test, FAILED_RUNNING);
-            return;
+            throw new IllegalStateException(String.format("Pod name is null in test '%s'", test.getUuid()));
         }
 
         var deployment = this.deserealizeAndCheckDeployment(test);
@@ -117,7 +101,6 @@ public class K8sTestStatusCheckerService {
 
         var pod = k8sClient.pods().inNamespace(namespace).withName(podName).get();
         if (isNull(pod)) {
-            this.failTest(test, FAILED_RUNNING);
             throw new IllegalStateException(String.format("Can't find pod of deployment '%s' in namespace '%s'",
                     deploymentName, namespace));
         }
@@ -127,7 +110,6 @@ public class K8sTestStatusCheckerService {
                         Boolean.TRUE.equals(containerStatus.getReady()) &&
                                 containerStatus.getRestartCount() == 0);
         if (!isHealthy) {
-            this.failTest(test, FAILED_RUNNING);
             throw new IllegalStateException(String.format("Not healthy pod of deployment '%s' in namespace '%s'",
                     deploymentName, namespace));
         }
@@ -150,12 +132,10 @@ public class K8sTestStatusCheckerService {
                             .getValue();
                     currentMax = new BigDecimal(currentMaxString);
                 } catch (Exception ex) {
-                    this.failTest(test, FAILED_RUNNING);
                     throw new IllegalStateException(String.format("Failed fetching metric '%s' in test '%s'",
                             query, test.getUuid()), ex);
                 }
                 if (currentMax.compareTo(BigDecimal.valueOf(metricMax.getValue())) > 0) {
-                    this.failTest(test, FAILED_RUNNING);
                     throw new IllegalStateException(String.format("Test '%s' failed due to metric '%s': %s > %s",
                             test.getUuid(), query, currentMax, metricMax.getValue()));
                 }
@@ -186,11 +166,17 @@ public class K8sTestStatusCheckerService {
         return deployment;
     }
 
-    private void failTest(TuningTest test, TuningTestStatus newStatus) {
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void failTest(UUID testUuid, TuningTestStatus newStatus, Throwable ex) {
+        var test = tuningTestRepository.findById(testUuid).get();
         test.setStatus(newStatus);
         tuningTestRepository.save(test);
-        log.warn(String.format("Test '%s' failed: %s", test.getUuid(), test.getStatus().name()));
-        this.deploymentReplicasToZero(test);
+        log.error(String.format("Test '%s' failed: %s", test.getUuid(), test.getStatus().name()), ex);
+    }
+
+    @Transactional
+    public void deploymentReplicasToZero(UUID testUuid) {
+        this.deploymentReplicasToZero(tuningTestRepository.findById(testUuid).get());
     }
 
     private void deploymentReplicasToZero(TuningTest test) {
@@ -201,14 +187,12 @@ public class K8sTestStatusCheckerService {
                 .scale(0);
     }
 
-    private boolean checkTestTimeout(TuningTest test) {
+    private void checkTestTimeout(TuningTest test) {
         var timeout = Instant.now().getEpochSecond() - test.getDeployedTime().getEpochSecond() >
                 test.getTuningTestProps().getStartTestTimeoutSec();
         if (timeout) {
-            log.warn(String.format("Test '%s' timeout", test.getUuid()));
-            this.failTest(test, FAILED_READY);
+            throw new IllegalStateException(String.format("Test '%s' timeout", test.getUuid()));
         }
-        return timeout;
     }
 
     private List<String> parseExecCmd(String cmd) {

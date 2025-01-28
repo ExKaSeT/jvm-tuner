@@ -1,23 +1,14 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.util;
 
-import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
-import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
-import last.project.jvmtuner.annotation.AppTest;
-import last.project.jvmtuner.service.tuning_test.K8sDeployService;
-import lombok.RequiredArgsConstructor;
-import org.junit.jupiter.api.Test;
+import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
+import last.project.jvmtuner.model.tuning_test.TuningTestProps;
+import last.project.jvmtuner.service.tuning_test.TuningTestPropsService;
 
-@AppTest
-@RequiredArgsConstructor
-public class K8sDeployServiceTest {
+import java.util.List;
 
-    private final K8sDeployService k8sDeployService;
-
-    @Test
-    void deployTest() {
-        var client = new KubernetesClientBuilder().build();
-        Deployment deployment = new KubernetesSerialization().unmarshal("""
+public class GetBaseData {
+    public static TuningTestProps getTestProps(TuningTestPropsService service) {
+        String deployment = """
                 kind: Deployment
                 apiVersion: apps/v1
                 metadata:
@@ -51,11 +42,11 @@ public class K8sDeployServiceTest {
                               protocol: TCP
                           resources:
                             limits:
-                              cpu: 200m
-                              memory: 300Mi
+                              cpu: 800m
+                              memory: 800Mi
                             requests:
-                              cpu: 200m
-                              memory: 300Mi
+                              cpu: 800m
+                              memory: 800Mi
                           livenessProbe:
                             httpGet:
                               path: /actuator/health/liveness
@@ -78,13 +69,14 @@ public class K8sDeployServiceTest {
                             failureThreshold: 3
                         - name: curl
                           image: alpine/curl
-                          command: ["/bin/sh", "-c", "tail -f /dev/null"]""", Deployment.class);
+                          command: ["/bin/sh", "-c", "tail -f /dev/null"]""";
 
-
-        k8sDeployService.prepareDeployment(deployment, "8080/actuator/prometheus",
-                "exkaset/gatling@sha256:4810aec32e1862453419c776217e63b346d7a05a499251ca6f840364b9e1c71f",
-                "crypto");
-        k8sDeployService.deploy(deployment, client);
+        return service.saveTuningTestProps(deployment, "crypto",
+                "8080/actuator/prometheus", "exkaset/gatling:1.0",
+                "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"",
+                60, 60,
+                List.of(new MetricMaxValueDto()
+                        .setQuery("sum(gatling_count_total{type=\"ko\", $jvm_tuner_id}) / sum(gatling_count_total{type=\"ok\", $jvm_tuner_id}) * 100")
+                        .setMaxValue(10)));
     }
-
 }

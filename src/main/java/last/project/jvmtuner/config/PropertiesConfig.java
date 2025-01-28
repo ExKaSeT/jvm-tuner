@@ -1,5 +1,6 @@
 package last.project.jvmtuner.config;
 
+import last.project.jvmtuner.props.MaxHeapSizeProps;
 import last.project.jvmtuner.props.MetricQueriesProps;
 import last.project.jvmtuner.props.MetricsProps;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -22,5 +23,12 @@ public class PropertiesConfig {
     @ConfigurationProperties(prefix = "metric-queries", ignoreUnknownFields = false)
     public MetricQueriesProps queriesProps() {
         return new MetricQueriesProps();
+    }
+
+    @Bean
+    @Validated
+    @ConfigurationProperties(prefix = "modes.max-heap-size", ignoreUnknownFields = false)
+    public MaxHeapSizeProps maxHeapSizeProps() {
+        return new MaxHeapSizeProps();
     }
 }

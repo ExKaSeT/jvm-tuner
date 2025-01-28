@@ -21,8 +21,6 @@ databaseChangeLog:
               - column:
                   name: mode_data
                   type: VARCHAR
-                  constraints:
-                    nullable: false
               - column:
                   name: status
                   type: VARCHAR

@@ -6,9 +6,10 @@ public enum TuningTestStatus {
     ENDED,
     PROCESSED,
     FAILED_READY,
-    FAILED_RUNNING;
+    FAILED_RUNNING,
+    FAILED_PROCESSING;
 
     public boolean isFailed() {
-        return this.equals(FAILED_READY) || this.equals(FAILED_RUNNING);
+        return this.equals(FAILED_READY) || this.equals(FAILED_RUNNING) || this.equals(FAILED_PROCESSING);
     }
 }
