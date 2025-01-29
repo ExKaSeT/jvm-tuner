@@ -1,7 +1,7 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.service.tuning_task;
 
 import last.project.jvmtuner.annotation.AppTest;
-import last.project.jvmtuner.service.mode.MaxHeapSizeService;
+import last.project.jvmtuner.service.tuning_task.mode.MaxHeapSizeService;
 import last.project.jvmtuner.service.tuning_test.TuningTestPropsService;
 import last.project.jvmtuner.util.GetBaseData;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ public class MaxHeapSizeServiceTest {
     private final TuningTestPropsService tuningTestPropsService;
 
     @Test
-    void startTaskTest() {
+    void startMaxHeapSizeTaskTest() {
         var props = GetBaseData.getTestProps(tuningTestPropsService);
 
         maxHeapSizeService.start(props);

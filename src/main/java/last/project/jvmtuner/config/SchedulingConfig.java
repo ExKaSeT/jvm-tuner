@@ -1,5 +1,6 @@
 package last.project.jvmtuner.config;
 
+import last.project.jvmtuner.service.tuning_task.TasksProcessorService;
 import last.project.jvmtuner.service.tuning_test.TestsProcessorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,10 +14,16 @@ import org.springframework.scheduling.annotation.Scheduled;
 @RequiredArgsConstructor
 public class SchedulingConfig {
 
-    private final TestsProcessorService testStatusCheckerService;
+    private final TestsProcessorService testsProcessorService;
+    private final TasksProcessorService tasksProcessorService;
 
     @Scheduled(cron = "${scheduler.process-tests-cron}")
-    public void testStatusCheckerService() {
-        testStatusCheckerService.processTests();
+    public void processTests() {
+        testsProcessorService.processTests();
+    }
+
+    @Scheduled(cron = "${scheduler.process-tasks-cron}")
+    public void processTasks() {
+        tasksProcessorService.processTasks();
     }
 }

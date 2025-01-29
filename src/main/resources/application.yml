@@ -38,8 +38,9 @@ metric-queries: # prometheus запросы для получения метри
 scheduler:
   enabled: true
   process-tests-cron: '0/10 * * ? * *'
+  process-tasks-cron: '0/10 * * ? * *'
 
 modes:
   max-heap-size:
     end-step-mb: 10
-    retry-on-fail-count: 2
+    retry-on-fail-count: 1

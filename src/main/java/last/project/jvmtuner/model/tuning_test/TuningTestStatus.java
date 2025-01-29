@@ -12,4 +12,8 @@ public enum TuningTestStatus {
     public boolean isFailed() {
         return this.equals(FAILED_READY) || this.equals(FAILED_RUNNING) || this.equals(FAILED_PROCESSING);
     }
+
+    public boolean isCompleted() {
+        return this.isFailed() || this.equals(PROCESSED);
+    }
 }

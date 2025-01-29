@@ -1,10 +1,9 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.service.tuning_test;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import last.project.jvmtuner.annotation.AppTest;
-import last.project.jvmtuner.service.tuning_test.K8sDeployService;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 

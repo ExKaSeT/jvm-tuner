@@ -1,10 +1,12 @@
-package last.project.jvmtuner.service.mode;
+package last.project.jvmtuner.service.tuning_task.mode;
 
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
+
+import java.util.UUID;
 
 public interface TuningModeService {
 
     void start(TuningTestProps testProps);
 
-    void check();
+    void process(long taskId, UUID testUuid);
 }

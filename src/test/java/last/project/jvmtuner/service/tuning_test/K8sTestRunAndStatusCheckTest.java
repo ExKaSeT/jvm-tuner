@@ -1,13 +1,9 @@
-package last.project.jvmtuner.service;
+package last.project.jvmtuner.service.tuning_test;
 
 import last.project.jvmtuner.annotation.AppTest;
 import last.project.jvmtuner.dao.tuning_test.TuningTestMetricsRepository;
 import last.project.jvmtuner.dao.tuning_test.TuningTestRepository;
 import last.project.jvmtuner.model.tuning_test.TuningTestStatus;
-import last.project.jvmtuner.service.tuning_test.EndTestProcessService;
-import last.project.jvmtuner.service.tuning_test.K8sTestRunnerService;
-import last.project.jvmtuner.service.tuning_test.RunningTestCheckerService;
-import last.project.jvmtuner.service.tuning_test.TuningTestPropsService;
 import last.project.jvmtuner.util.GetBaseData;
 import last.project.jvmtuner.util.K8sDeploymentUtil;
 import lombok.RequiredArgsConstructor;
