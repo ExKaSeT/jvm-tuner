@@ -42,5 +42,6 @@ scheduler:
 
 modes:
   max-heap-size:
-    end-step-mb: 10
+    end-step-mb: 50
     retry-on-fail-count: 1
+    min-heap-size-mb-query: sum(jvm_memory_used_bytes{area="heap", $jvm_tuner_id}) / 1024 / 1024

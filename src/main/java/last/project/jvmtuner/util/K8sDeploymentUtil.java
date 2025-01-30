@@ -53,8 +53,7 @@ public class K8sDeploymentUtil {
     }
 
     public static Consumer<Deployment> addJvmOptions(List<String> options, String containerName) {
-        return addJvmOptions(options, containerName, l -> {
-        });
+        return addJvmOptions(options, containerName, l -> {});
     }
 
 
@@ -62,7 +61,7 @@ public class K8sDeploymentUtil {
         var deployment = deserialize(testProps.getPreparedDeployment());
 
         var containerName = testProps.getAppContainerName();
-        var container =  deployment.getSpec().getTemplate().getSpec().getContainers().stream()
+        var container = deployment.getSpec().getTemplate().getSpec().getContainers().stream()
                 .filter(c -> c.getName().equals(containerName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(

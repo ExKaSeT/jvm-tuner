@@ -1,5 +1,6 @@
 package last.project.jvmtuner.service.tuning_task.mode;
 
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import last.project.jvmtuner.dto.mode.max_heap_size.MaxHeapSizeDto;
 import last.project.jvmtuner.model.tuning_task.*;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
@@ -16,12 +17,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
+
+import static java.lang.Math.abs;
+import static java.util.Objects.isNull;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class MaxHeapSizeService implements TuningModeService {
+
+    private static final List<String> STATIC_JVM_OPTIONS = List.of("-XX:-UseAdaptiveSizePolicy", "-XX:+AlwaysPreTouch");
 
     private final K8sTestRunnerService k8sTestRunnerService;
     private final MetricService metricService;
@@ -52,6 +60,7 @@ public class MaxHeapSizeService implements TuningModeService {
         var taskTest = taskTestService.get(taskId, testUuid);
         var task = taskTest.getTask();
         var test = taskTest.getTest();
+        var testProps = test.getTuningTestProps();
 
         if (!test.getStatus().isCompleted()) {
             throw new IllegalArgumentException(String.format("Can't process not completed test '%s' in task '%s'",
@@ -70,7 +79,7 @@ public class MaxHeapSizeService implements TuningModeService {
         if (testFailed && data.getRetryCount() < maxHeapSizeProps.getRetryOnFailCount()) {
             int retryNumber = data.getRetryCount() + 1;
 
-            var retryTest = k8sTestRunnerService.runTest(task.getTuningTestProps());
+            var retryTest = k8sTestRunnerService.runTest(testProps);
             var retryTaskTest = taskTestService.save(task, retryTest,
                     taskTestService.addRetryPrefix(taskTest.getDescription(), retryNumber));
 
@@ -85,12 +94,73 @@ public class MaxHeapSizeService implements TuningModeService {
             return;
         }
 
-        // TODO:
-        throw new RuntimeException("Не реализовано");
+        data.setRetryCount(0);
+        int nextTestHeapSizeMB;
 
         // не определен минимальный HeapSize - был начальный тест
-//        if (isNull(data.getMinHeapSize())) {
-//
-//        }
+        if (isNull(data.getMinHeapSize())) {
+            if (testFailed) {
+                throw new IllegalStateException(String.format("Initial test '%s' in task '%s' failed",
+                        testUuid, taskId));
+            }
+
+            int minHeapSize;
+            var startTime = test.getStartedTestTime();
+            var endTime = startTime.plusSeconds(testProps.getTestDurationSec());
+            var query = metricService.replaceWithTestLabels(maxHeapSizeProps.getMinHeapSizeMbQuery(),
+                    testUuid.toString(), test.getPodName(), testProps.getAppContainerName());
+            try {
+                var response = metricService.rangeRequest(query, startTime, endTime);
+                var maxValue = response.getData().getResult().get(0).getValues()
+                        .stream()
+                        .mapToDouble(value -> Double.parseDouble(value.getValue()))
+                        .max()
+                        .orElseThrow(() -> new IllegalStateException("Not found min heap size metric"));
+                minHeapSize = (int) Math.round(maxValue);
+            } catch (Exception ex) {
+                throw new IllegalStateException(String.format("Failed fetching metric '%s' in test '%s'",
+                        query, test.getUuid()), ex);
+            }
+
+            data.setMinHeapSize(minHeapSize);
+            nextTestHeapSizeMB = (minHeapSize + data.getMaxHeapSize()) / 2;
+        } else {
+            // бинарным поиском находим максимальный heap size
+            // testHeapSize - значение heap size у текущего прошедшего теста
+            int testHeapSize = (data.getMinHeapSize() + data.getMaxHeapSize()) / 2;
+            if (testFailed) {
+                data.setMaxHeapSize(testHeapSize);
+            } else {
+                data.setMinHeapSize(testHeapSize);
+            }
+
+            if (abs(data.getMaxHeapSize() - data.getMinHeapSize()) < maxHeapSizeProps.getEndStepMb()) {
+                taskService.endTask(taskId);
+                return;
+            }
+
+            nextTestHeapSizeMB = (data.getMinHeapSize() + data.getMaxHeapSize()) / 2;
+        }
+
+        var nextTest = k8sTestRunnerService.runTest(testProps,
+                getSetFixedHeapSize(testProps.getAppContainerName(), nextTestHeapSizeMB));
+        var nextTaskTest = taskTestService.save(task, nextTest,
+                String.format("Fixed heap size: %d MB", nextTestHeapSizeMB));
+
+        data.setCurrentTest(nextTest.getUuid());
+        taskService.updateModeData(taskId, SerializationUtil.serialize(data));
+
+        taskTestService.setProcessed(taskTest);
+
+        log.info(String.format("Run test '%s' with description '%s'",
+                nextTest.getUuid(), nextTaskTest.getDescription()));
+    }
+
+    private Consumer<Deployment> getSetFixedHeapSize(String containerName, int heapSizeMB) {
+        return K8sDeploymentUtil.addJvmOptions(STATIC_JVM_OPTIONS, containerName, options -> {
+            options.removeIf(option -> option.startsWith("-Xmx") || option.startsWith("-Xms"));
+            options.add(String.format("-Xmx%dm", heapSizeMB));
+            options.add(String.format("-Xms%dm", heapSizeMB));
+        });
     }
 }

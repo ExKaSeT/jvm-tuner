@@ -9,4 +9,6 @@ public class MaxHeapSizeProps {
     private Integer endStepMb;
     @NotNull
     private Integer retryOnFailCount;
+    @NotNull
+    private String minHeapSizeMbQuery;
 }

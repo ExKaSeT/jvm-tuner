@@ -47,4 +47,16 @@ public class TuningTaskService {
 
         log.error(String.format("Task '%d' failed", taskId), ex);
     }
+
+    public void endTask(Long taskId) {
+        var task = tuningTaskRepository.findById(taskId).get();
+        task.setStatus(TuningTaskStatus.COMPLETED);
+        tuningTaskRepository.save(task);
+
+        task.getTaskTests().stream()
+                .filter(taskTest -> !taskTest.getProcessed())
+                .forEach(taskTestService::setProcessed);
+
+        log.info(String.format("Task '%d' completed", taskId));
+    }
 }
