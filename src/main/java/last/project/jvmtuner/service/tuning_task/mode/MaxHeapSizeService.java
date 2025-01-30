@@ -156,6 +156,11 @@ public class MaxHeapSizeService implements TuningModeService {
                 nextTest.getUuid(), nextTaskTest.getDescription()));
     }
 
+    @Override
+    public TuningMode getTuningMode() {
+        return TuningMode.MAX_HEAP_SIZE;
+    }
+
     private Consumer<Deployment> getSetFixedHeapSize(String containerName, int heapSizeMB) {
         return K8sDeploymentUtil.addJvmOptions(STATIC_JVM_OPTIONS, containerName, options -> {
             options.removeIf(option -> option.startsWith("-Xmx") || option.startsWith("-Xms"));
