@@ -51,6 +51,7 @@ public class TuningTaskService {
     public void endTask(Long taskId) {
         var task = tuningTaskRepository.findById(taskId).get();
         task.setStatus(TuningTaskStatus.COMPLETED);
+        task.setCompletedTime(Instant.now());
         tuningTaskRepository.save(task);
 
         task.getTaskTests().stream()
