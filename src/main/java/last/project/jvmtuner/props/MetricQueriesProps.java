@@ -1,18 +1,18 @@
 package last.project.jvmtuner.props;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
 public class MetricQueriesProps {
-    @NotNull
+    @NotBlank
     private String cpuUsageAvg;
-    @NotNull
+    @NotBlank
     private String cpuThrottlingAvg;
-    @NotNull
+    @NotBlank
     private String memoryUsageAvg;
-    @NotNull
+    @NotBlank
     private String memoryWssAvg;
-    @NotNull
+    @NotBlank
     private String memoryRssAvg;
 }

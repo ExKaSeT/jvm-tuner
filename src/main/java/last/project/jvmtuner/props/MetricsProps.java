@@ -1,13 +1,15 @@
 package last.project.jvmtuner.props;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class MetricsProps {
-    @NotNull
+    @NotBlank
     private String uuidLabelName;
-    @NotNull
+    @NotBlank
     private String pushUrl;
     @NotNull
     private Query query;
@@ -15,25 +17,27 @@ public class MetricsProps {
     private TuningTest tuningTest;
     @Data
     public static class Query {
-        @NotNull
+        @NotBlank
         private String api;
         @NotNull
+        @Min(5)
         private Integer stepSec;
         @NotNull
         private ReplaceWithLabel replaceWithLabel;
     }
     @Data
     public static class ReplaceWithLabel {
-        @NotNull
+        @NotBlank
         private String testUuid;
-        @NotNull
+        @NotBlank
         private String podName;
-        @NotNull
+        @NotBlank
         private String containerName;
     }
     @Data
     public static class TuningTest {
         @NotNull
+        @Min(0)
         private Integer checkDelayAfterLoadStartSec;
     }
 }

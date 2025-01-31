@@ -30,7 +30,7 @@ import static java.util.Objects.isNull;
 @RequiredArgsConstructor
 public class MaxHeapSizeService implements TuningModeService {
 
-    private static final List<String> STATIC_JVM_OPTIONS = List.of("-XX:-UseAdaptiveSizePolicy", "-XX:+AlwaysPreTouch");
+    private static final List<String> STATIC_JVM_OPTIONS = List.of("-XX:+AlwaysPreTouch");
 
     private final K8sTestRunnerService k8sTestRunnerService;
     private final MetricService metricService;
@@ -41,9 +41,11 @@ public class MaxHeapSizeService implements TuningModeService {
     @Override
     @Transactional
     public void start(TuningTestProps testProps) {
+        var memoryLimitMB = K8sDeploymentUtil.getAppMemoryLimitsMB(testProps);
         var data = new MaxHeapSizeDto()
                 .setRetryCount(0)
-                .setMaxHeapSize(K8sDeploymentUtil.getAppMemoryLimitsMB(testProps));
+                .setMaxHeapSize(memoryLimitMB)
+                .setEndStepMB((memoryLimitMB / 100) * maxHeapSizeProps.getEndStepPercent());
 
         var task = taskService.createTask(testProps, TuningMode.MAX_HEAP_SIZE);
         var test = k8sTestRunnerService.runTest(testProps);
@@ -140,7 +142,8 @@ public class MaxHeapSizeService implements TuningModeService {
                 data.setMinHeapSize(testHeapSize);
             }
 
-            if (abs(data.getMaxHeapSize() - data.getMinHeapSize()) < maxHeapSizeProps.getEndStepMb()) {
+            // завершение задачи
+            if (abs(data.getMaxHeapSize() - data.getMinHeapSize()) < data.getEndStepMB()) {
                 taskService.endTask(taskId);
                 return;
             }

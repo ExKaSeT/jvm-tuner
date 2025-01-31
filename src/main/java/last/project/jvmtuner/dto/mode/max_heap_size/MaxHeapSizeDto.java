@@ -12,4 +12,5 @@ public class MaxHeapSizeDto {
     private Integer minHeapSize;
     private Integer maxHeapSize;
     private Integer retryCount;
+    private Integer endStepMB;
 }
