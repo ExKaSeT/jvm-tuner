@@ -1,14 +1,17 @@
 package last.project.jvmtuner.props;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
 public class MaxHeapSizeProps {
     @NotNull
-    private Integer endStepMb;
+    @Min(1)
+    @Max(50)
+    private Integer endStepPercent;
     @NotNull
+    @Min(0)
     private Integer retryOnFailCount;
-    @NotNull
+    @NotBlank
     private String minHeapSizeMbQuery;
 }
