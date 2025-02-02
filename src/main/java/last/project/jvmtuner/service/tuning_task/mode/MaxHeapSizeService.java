@@ -1,9 +1,10 @@
 package last.project.jvmtuner.service.tuning_task.mode;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import last.project.jvmtuner.dto.mode.max_heap_size.MaxHeapSizeDto;
+import last.project.jvmtuner.dto.mode.MaxHeapSizeDto;
 import last.project.jvmtuner.model.tuning_task.*;
 import last.project.jvmtuner.model.tuning_test.TuningTest;
+import last.project.jvmtuner.model.tuning_test.TuningTestMetricsService;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.props.MaxHeapSizeProps;
 import last.project.jvmtuner.service.MetricService;
@@ -14,6 +15,7 @@ import last.project.jvmtuner.util.K8sDeploymentUtil;
 import last.project.jvmtuner.util.SerializationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
-
-import static java.lang.Math.abs;
-import static java.util.Objects.isNull;
 
 @Service
 @Slf4j
@@ -37,6 +36,7 @@ public class MaxHeapSizeService implements TuningModeService {
     private final MaxHeapSizeProps maxHeapSizeProps;
     private final TuningTaskTestService taskTestService;
     private final TuningTaskService taskService;
+    private final TuningTestMetricsService testMetricsService;
 
     @Override
     @Transactional
@@ -44,14 +44,15 @@ public class MaxHeapSizeService implements TuningModeService {
         var memoryLimitMB = K8sDeploymentUtil.getAppMemoryLimitsMB(testProps);
         var data = new MaxHeapSizeDto()
                 .setRetryCount(0)
-                .setMaxHeapSize(memoryLimitMB)
-                .setEndStepMB((memoryLimitMB / 100) * maxHeapSizeProps.getEndStepPercent());
+                .setContainerLimitMB(memoryLimitMB)
+                .setStepSizeMB((memoryLimitMB / 100) * maxHeapSizeProps.getStartStepPercent());
 
         var task = taskService.createTask(testProps, TuningMode.MAX_HEAP_SIZE);
-        var test = k8sTestRunnerService.runTest(testProps);
+        var test = runInitialTest(testProps);
         taskTestService.save(task, test, "Initial test with unmodified deployment");
 
-        data.setCurrentTest(test.getUuid());
+        data.setCurrentTest(new MaxHeapSizeDto.Test().setUuid(test.getUuid()));
+        data.setPrevTest(new MaxHeapSizeDto.Test());
         taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
 
         log.info(String.format("Start initial test '%s' in task '%s'", test.getUuid(), task.getId()));
@@ -71,7 +72,7 @@ public class MaxHeapSizeService implements TuningModeService {
         }
 
         var data = SerializationUtil.deserialize(task.getModeData(), MaxHeapSizeDto.class);
-        if (!data.getCurrentTest().equals(testUuid)) {
+        if (!data.getCurrentTest().getUuid().equals(testUuid)) {
             throw new IllegalArgumentException(String.format("Test '%s' in task '%s' is not current",
                     testUuid, taskId));
         }
@@ -84,16 +85,16 @@ public class MaxHeapSizeService implements TuningModeService {
 
             TuningTest retryTest;
             if (isInitialTest(data)) {
-                retryTest = k8sTestRunnerService.runTest(testProps);
+                retryTest = runInitialTest(testProps);
             } else {
                 retryTest = k8sTestRunnerService.runTest(testProps,
-                        getSetFixedHeapSize(testProps.getAppContainerName(), calculateHeapSize(data)));
+                        setFixedHeapSize(testProps.getAppContainerName(), data.getCurrentTest().getHeapSizeMB()));
             }
             var retryTaskTest = taskTestService.save(task, retryTest,
                     taskTestService.addRetryPrefix(taskTest.getDescription(), retryNumber));
 
             data.setRetryCount(retryNumber);
-            data.setCurrentTest(retryTest.getUuid());
+            data.getCurrentTest().setUuid(retryTest.getUuid());
             taskService.updateModeData(taskId, SerializationUtil.serialize(data));
 
             taskTestService.setProcessed(taskTest);
@@ -104,7 +105,6 @@ public class MaxHeapSizeService implements TuningModeService {
         }
 
         data.setRetryCount(0);
-        int nextTestHeapSizeMB;
 
         if (isInitialTest(data)) {
             if (testFailed) {
@@ -112,10 +112,10 @@ public class MaxHeapSizeService implements TuningModeService {
                         testUuid, taskId));
             }
 
-            int minHeapSize;
+            int heapSize;
             var startTime = test.getStartedTestTime();
             var endTime = startTime.plusSeconds(testProps.getTestDurationSec());
-            var query = metricService.replaceWithTestLabels(maxHeapSizeProps.getMinHeapSizeMbQuery(),
+            var query = metricService.replaceWithTestLabels(maxHeapSizeProps.getHeapSizeMbQuery(),
                     testUuid.toString(), test.getPodName(), testProps.getAppContainerName());
             try {
                 var response = metricService.rangeRequest(query, startTime, endTime);
@@ -124,39 +124,53 @@ public class MaxHeapSizeService implements TuningModeService {
                         .mapToDouble(value -> Double.parseDouble(value.getValue()))
                         .max()
                         .orElseThrow(() -> new IllegalStateException("Not found min heap size metric"));
-                minHeapSize = (int) Math.round(maxValue);
+                heapSize = (int) Math.round(maxValue);
             } catch (Exception ex) {
                 throw new IllegalStateException(String.format("Failed fetching metric '%s' in test '%s'",
                         query, test.getUuid()), ex);
             }
 
-            data.setMinHeapSize(minHeapSize);
-            nextTestHeapSizeMB = calculateHeapSize(data);
-        } else {
-            // бинарным поиском находим максимальный heap size
-            // testHeapSize - значение heap size у текущего прошедшего теста
-            int testHeapSize = calculateHeapSize(data);
-            if (testFailed) {
-                data.setMaxHeapSize(testHeapSize);
-            } else {
-                data.setMinHeapSize(testHeapSize);
-            }
-
-            // завершение задачи
-            if (abs(data.getMaxHeapSize() - data.getMinHeapSize()) < data.getEndStepMB()) {
-                taskService.endTask(taskId);
-                return;
-            }
-
-            nextTestHeapSizeMB = calculateHeapSize(data);
+            data.getCurrentTest().setHeapSizeMB(heapSize);
         }
 
+        int nextTestHeapSizeMB;
+        if (testFailed) {
+
+
+
+            throw new NotImplementedException();
+        } else {
+            // Если нагрузка на CPU увеличилась, то меняем направление и уменьшаем шаг
+            if (testMetricsService.compareByCpuUsage(testUuid, data.getPrevTest().getUuid()) < 0) {
+                if (data.isIncreaseDirection()) {
+                    data.setMaxHeapBound(data.getCurrentTest().getHeapSizeMB());
+                } else {
+                    data.setMinHeapBound(data.getCurrentTest().getHeapSizeMB());
+                }
+                data.setIncreaseDirection(!data.isIncreaseDirection());
+                data.setStepSizeMB((int) (data.getStepSizeMB() / maxHeapSizeProps.getStepDivider()));
+            }
+
+            if (data.isIncreaseDirection()) {
+                nextTestHeapSizeMB = data.getCurrentTest().getHeapSizeMB() + data.getStepSizeMB();
+            } else {
+                nextTestHeapSizeMB = data.getCurrentTest().getHeapSizeMB() - data.getStepSizeMB();
+            }
+        }
+
+        // TODO: check END test: stepSize < (containerLimits / 100) * endStepPercent
+        // TODO: if nextTestHeapSizeMB > containerLimits
+
         var nextTest = k8sTestRunnerService.runTest(testProps,
-                getSetFixedHeapSize(testProps.getAppContainerName(), nextTestHeapSizeMB));
+                setFixedHeapSize(testProps.getAppContainerName(), nextTestHeapSizeMB));
         var nextTaskTest = taskTestService.save(task, nextTest,
                 String.format("Fixed heap size: %d MB", nextTestHeapSizeMB));
 
-        data.setCurrentTest(nextTest.getUuid());
+        data.setPrevTest(data.getCurrentTest());
+        data.setCurrentTest(new MaxHeapSizeDto.Test()
+                .setHeapSizeMB(nextTestHeapSizeMB)
+                .setUuid(nextTest.getUuid())
+        );
         taskService.updateModeData(taskId, SerializationUtil.serialize(data));
 
         taskTestService.setProcessed(taskTest);
@@ -170,16 +184,18 @@ public class MaxHeapSizeService implements TuningModeService {
         return TuningMode.MAX_HEAP_SIZE;
     }
 
-    // не определен минимальный HeapSize - был начальный тест
     private boolean isInitialTest(MaxHeapSizeDto data) {
-        return isNull(data.getMinHeapSize());
+        return data.isInitialTest();
     }
 
-    private int calculateHeapSize(MaxHeapSizeDto data) {
-        return (data.getMinHeapSize() + data.getMaxHeapSize()) / 2;
+    private boolean is
+
+    private TuningTest runInitialTest(TuningTestProps props) {
+        return k8sTestRunnerService.runTest(props, K8sDeploymentUtil
+                .addJvmOptions(STATIC_JVM_OPTIONS, props.getAppContainerName()));
     }
 
-    private Consumer<Deployment> getSetFixedHeapSize(String containerName, int heapSizeMB) {
+    private Consumer<Deployment> setFixedHeapSize(String containerName, int heapSizeMB) {
         return K8sDeploymentUtil.addJvmOptions(STATIC_JVM_OPTIONS, containerName, options -> {
             options.removeIf(option -> option.startsWith("-Xmx") || option.startsWith("-Xms"));
             options.add(String.format("-Xmx%dm", heapSizeMB));
