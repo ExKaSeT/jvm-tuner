@@ -9,6 +9,7 @@ import java.util.UUID;
 @Accessors(chain = true)
 public class MaxHeapSizeDto {
     private UUID currentTest;
+    private Double cpuUsageAvg;
     private Integer minHeapSize;
     private Integer maxHeapSize;
     private Integer retryCount;

@@ -1,4 +1,4 @@
-package last.project.jvmtuner.model.tuning_test;
+package last.project.jvmtuner.service.tuning_test;
 
 import last.project.jvmtuner.dao.tuning_test.TuningTestMetricsRepository;
 import lombok.RequiredArgsConstructor;

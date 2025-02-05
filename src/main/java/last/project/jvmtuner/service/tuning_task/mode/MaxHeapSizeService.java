@@ -104,7 +104,6 @@ public class MaxHeapSizeService implements TuningModeService {
         }
 
         data.setRetryCount(0);
-        int nextTestHeapSizeMB;
 
         if (isInitialTest(data)) {
             if (testFailed) {
@@ -131,13 +130,23 @@ public class MaxHeapSizeService implements TuningModeService {
             }
 
             data.setMinHeapSize(minHeapSize);
-            nextTestHeapSizeMB = calculateHeapSize(data);
+            data.setCpuUsageAvg(test.getTuningTestMetrics().getCpuUsageAvg());
         } else {
             // бинарным поиском находим максимальный heap size
             // testHeapSize - значение heap size у текущего прошедшего теста
             int testHeapSize = calculateHeapSize(data);
+
             if (testFailed) {
                 data.setMaxHeapSize(testHeapSize);
+            } else if (maxHeapSizeProps.getCheckCpuUsage()) {
+                var currentCpuUsage = test.getTuningTestMetrics().getCpuUsageAvg();
+                var prevCpuUsage = data.getCpuUsageAvg();
+                if (currentCpuUsage.compareTo(prevCpuUsage) > 0) {
+                    data.setMaxHeapSize(testHeapSize);
+                } else {
+                    data.setMinHeapSize(testHeapSize);
+                }
+                data.setCpuUsageAvg(currentCpuUsage);
             } else {
                 data.setMinHeapSize(testHeapSize);
             }
@@ -147,9 +156,8 @@ public class MaxHeapSizeService implements TuningModeService {
                 taskService.endTask(taskId);
                 return;
             }
-
-            nextTestHeapSizeMB = calculateHeapSize(data);
         }
+        int nextTestHeapSizeMB = calculateHeapSize(data);
 
         var nextTest = k8sTestRunnerService.runTest(testProps,
                 getSetFixedHeapSize(testProps.getAppContainerName(), nextTestHeapSizeMB));

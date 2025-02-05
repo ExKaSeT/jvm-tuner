@@ -14,4 +14,6 @@ public class MaxHeapSizeProps {
     private Integer retryOnFailCount;
     @NotBlank
     private String minHeapSizeMbQuery;
+    @NotNull
+    private Boolean checkCpuUsage;
 }

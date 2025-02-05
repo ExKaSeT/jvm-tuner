@@ -45,3 +45,4 @@ modes:
     end-step-percent: 5
     retry-on-fail-count: 1
     min-heap-size-mb-query: sum(jvm_memory_max_bytes{area="heap", $jvm_tuner_id}) / 1024 / 1024
+    check-cpu-usage: true
