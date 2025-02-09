@@ -1,18 +1,14 @@
 spring:
   application:
     name: jvm-tuner
-
   datasource:
     driver-class-name: org.postgresql.Driver
-
   jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
   messages:
     basename: i18n/messages
-
   liquibase.change-log: classpath:/db/changelog/db-changelog.xml
 
 metrics:
@@ -46,3 +42,7 @@ modes:
     retry-on-fail-count: 1
     min-heap-size-mb-query: sum(jvm_memory_max_bytes{area="heap", $jvm_tuner_id}) / 1024 / 1024
     check-cpu-usage: true
+  serial-gc:
+    retry-on-fail-count: 1
+    min-old-gen-size-mb-query: min(jvm_memory_used_bytes{area="heap", id="Tenured Gen", $jvm_tuner_id}) / 1024 / 1024
+    step-percent: 10

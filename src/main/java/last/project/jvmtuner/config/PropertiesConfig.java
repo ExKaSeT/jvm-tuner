@@ -3,6 +3,7 @@ package last.project.jvmtuner.config;
 import last.project.jvmtuner.props.MaxHeapSizeProps;
 import last.project.jvmtuner.props.MetricQueriesProps;
 import last.project.jvmtuner.props.MetricsProps;
+import last.project.jvmtuner.props.SerialGCProps;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,5 +31,12 @@ public class PropertiesConfig {
     @ConfigurationProperties(prefix = "modes.max-heap-size", ignoreUnknownFields = false)
     public MaxHeapSizeProps maxHeapSizeProps() {
         return new MaxHeapSizeProps();
+    }
+
+    @Bean
+    @Validated
+    @ConfigurationProperties(prefix = "modes.serial-gc", ignoreUnknownFields = false)
+    public SerialGCProps serialGcProps() {
+        return new SerialGCProps();
     }
 }

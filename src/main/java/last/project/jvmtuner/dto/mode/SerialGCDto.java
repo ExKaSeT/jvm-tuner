@@ -1,4 +1,4 @@
-package last.project.jvmtuner.dto.mode.max_heap_size;
+package last.project.jvmtuner.dto.mode;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -7,11 +7,11 @@ import java.util.UUID;
 
 @Data
 @Accessors(chain = true)
-public class MaxHeapSizeDto {
+public class SerialGCDto {
     private UUID currentTest;
     private Double cpuUsageAvg;
-    private Integer minHeapSize;
-    private Integer maxHeapSize;
+    private Integer oldGenSize;
+    private Integer heapSize;
     private Integer retryCount;
-    private Integer endStepMB;
+    private Boolean foundMinWorkOldGen;
 }

@@ -7,7 +7,9 @@ import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -50,6 +52,13 @@ public class K8sDeploymentUtil {
                 envVars.add(new EnvVar(JAVA_OPTIONS_ENV, String.join(" ", options), null));
             }
         };
+    }
+
+    public static List<String> getJvmOptionList(Deployment deployment, String containerName) {
+        var result = new AtomicReference<List<String>>();
+        addJvmOptions(Collections.emptyList(), containerName, result::set)
+                .accept(deployment);
+        return result.get();
     }
 
     public static Consumer<Deployment> addJvmOptions(List<String> options, String containerName) {

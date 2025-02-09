@@ -1,11 +1,11 @@
 package last.project.jvmtuner.service.tuning_task.mode;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import last.project.jvmtuner.dto.mode.MaxHeapSizeDto;
-import last.project.jvmtuner.model.tuning_task.*;
+import last.project.jvmtuner.dto.mode.SerialGCDto;
+import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_test.TuningTest;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
-import last.project.jvmtuner.props.MaxHeapSizeProps;
+import last.project.jvmtuner.props.SerialGCProps;
 import last.project.jvmtuner.service.MetricService;
 import last.project.jvmtuner.service.tuning_task.TuningTaskService;
 import last.project.jvmtuner.service.tuning_task.TuningTaskTestService;
@@ -18,36 +18,47 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-import static java.lang.Math.abs;
 import static java.util.Objects.isNull;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class MaxHeapSizeService implements TuningModeService {
+public class SerialGCService implements TuningModeService {
 
-    private static final List<String> STATIC_JVM_OPTIONS = List.of("-XX:+AlwaysPreTouch");
+    private static final List<String> STATIC_JVM_OPTIONS = List.of("-XX:+UseSerialGC");
+    private static final BigInteger DIVISOR_BYTES_TO_MB = BigInteger.valueOf(1048576L);
+    private static final double FAIL_TEST_MAX_OLD_NEW_RATIO = 4;
 
     private final K8sTestRunnerService k8sTestRunnerService;
     private final MetricService metricService;
-    private final MaxHeapSizeProps maxHeapSizeProps;
+    private final SerialGCProps serialGcProps;
     private final TuningTaskTestService taskTestService;
     private final TuningTaskService taskService;
 
     @Override
     @Transactional
     public void start(TuningTestProps testProps) {
-        var memoryLimitMB = K8sDeploymentUtil.getAppMemoryLimitsMB(testProps);
-        var data = new MaxHeapSizeDto()
-                .setRetryCount(0)
-                .setMaxHeapSize(memoryLimitMB)
-                .setEndStepMB((memoryLimitMB / 100) * maxHeapSizeProps.getEndStepPercent());
+        var jvmOptions = K8sDeploymentUtil.getJvmOptionList(K8sDeploymentUtil
+                .deserialize(testProps.getPreparedDeployment()), testProps.getAppContainerName());
+        var maxHeap = jvmOptions.stream()
+                .filter(option -> option.startsWith("-Xmx"))
+                .findFirst();
+        if (maxHeap.isEmpty()) {
+            throw new IllegalArgumentException(String.format("Heap size is not fixed in test props '%d'",
+                    testProps.getId()));
+        }
 
-        var task = taskService.createTask(testProps, TuningMode.MAX_HEAP_SIZE);
+        var data = new SerialGCDto()
+                .setHeapSize(parseOptionSizeToMB(maxHeap.get()))
+                .setFoundMinWorkOldGen(false)
+                .setRetryCount(0);
+
+        var task = taskService.createTask(testProps, TuningMode.SERIAL_GC);
         var test = k8sTestRunnerService.runTest(testProps);
         taskTestService.save(task, test, "Initial test with unmodified deployment");
 
@@ -70,7 +81,7 @@ public class MaxHeapSizeService implements TuningModeService {
                     testUuid, taskId));
         }
 
-        var data = SerializationUtil.deserialize(task.getModeData(), MaxHeapSizeDto.class);
+        var data = SerializationUtil.deserialize(task.getModeData(), SerialGCDto.class);
         if (!data.getCurrentTest().equals(testUuid)) {
             throw new IllegalArgumentException(String.format("Test '%s' in task '%s' is not current",
                     testUuid, taskId));
@@ -79,7 +90,7 @@ public class MaxHeapSizeService implements TuningModeService {
         var testFailed = test.getStatus().isFailed();
 
         // повторение неуспешного теста, если позволяют настройки
-        if (testFailed && data.getRetryCount() < maxHeapSizeProps.getRetryOnFailCount()) {
+        if (testFailed && data.getRetryCount() < serialGcProps.getRetryOnFailCount()) {
             int retryNumber = data.getRetryCount() + 1;
 
             TuningTest retryTest;
@@ -87,7 +98,7 @@ public class MaxHeapSizeService implements TuningModeService {
                 retryTest = k8sTestRunnerService.runTest(testProps);
             } else {
                 retryTest = k8sTestRunnerService.runTest(testProps,
-                        getSetFixedHeapSize(testProps.getAppContainerName(), calculateHeapSize(data)));
+                        getSetFixedOldGenSize(testProps.getAppContainerName(), data.getOldGenSize()));
             }
             var retryTaskTest = taskTestService.save(task, retryTest,
                     taskTestService.addRetryPrefix(taskTest.getDescription(), retryNumber));
@@ -111,60 +122,50 @@ public class MaxHeapSizeService implements TuningModeService {
                         testUuid, taskId));
             }
 
-            int minHeapSize;
+            int minOldGenSize;
             var startTime = test.getStartedTestTime();
             var endTime = startTime.plusSeconds(testProps.getTestDurationSec());
-            var query = metricService.replaceWithTestLabels(maxHeapSizeProps.getMinHeapSizeMbQuery(),
+            var query = metricService.replaceWithTestLabels(serialGcProps.getMinOldGenSizeMbQuery(),
                     testUuid.toString(), test.getPodName(), testProps.getAppContainerName());
             try {
                 var response = metricService.rangeRequest(query, startTime, endTime);
-                var maxValue = response.getData().getResult().get(0).getValues()
+                var minValue = response.getData().getResult().get(0).getValues()
                         .stream()
                         .mapToDouble(value -> Double.parseDouble(value.getValue()))
-                        .max()
-                        .orElseThrow(() -> new IllegalStateException("Not found min heap size metric"));
-                minHeapSize = (int) Math.round(maxValue);
+                        .min()
+                        .orElseThrow(() -> new IllegalStateException("Not found min old gen metric"));
+                minOldGenSize = (int) Math.round(minValue);
             } catch (Exception ex) {
                 throw new IllegalStateException(String.format("Failed fetching metric '%s' in test '%s'",
                         query, test.getUuid()), ex);
             }
 
-            data.setMinHeapSize(minHeapSize);
-            data.setCpuUsageAvg(test.getTuningTestMetrics().getCpuUsageAvg());
+            data.setOldGenSize(minOldGenSize);
         } else {
-            // бинарным поиском находим максимальный heap size
-            // testHeapSize - значение heap size у текущего прошедшего теста
-            int testHeapSize = calculateHeapSize(data);
-
-            if (testFailed) {
-                data.setMaxHeapSize(testHeapSize);
-            } else if (maxHeapSizeProps.getCheckCpuUsage()) {
-                var currentCpuUsage = test.getTuningTestMetrics().getCpuUsageAvg();
-                var prevCpuUsage = data.getCpuUsageAvg();
-                if (currentCpuUsage.compareTo(prevCpuUsage) > 0) {
-                    data.setMaxHeapSize(testHeapSize);
-                } else {
-                    data.setMinHeapSize(testHeapSize);
+            if (data.getFoundMinWorkOldGen()) {
+                if (testFailed || data.getCpuUsageAvg() < test.getTuningTestMetrics().getCpuUsageAvg()) {
+                    taskService.endTask(taskId);
+                    return;
                 }
-                data.setCpuUsageAvg(currentCpuUsage);
-            } else {
-                data.setMinHeapSize(testHeapSize);
-            }
-
-            // завершение задачи
-            if (abs(data.getMaxHeapSize() - data.getMinHeapSize()) < data.getEndStepMB()) {
-                taskService.endTask(taskId);
-                return;
+                data.setCpuUsageAvg(test.getTuningTestMetrics().getCpuUsageAvg());
+            } else if (!testFailed) {
+                data.setFoundMinWorkOldGen(true);
+                data.setCpuUsageAvg(test.getTuningTestMetrics().getCpuUsageAvg());
             }
         }
-        int nextTestHeapSizeMB = calculateHeapSize(data);
+        int nextTestOldGenSizeMB = data.getOldGenSize() + (data.getHeapSize() * serialGcProps.getStepPercent() / 100);
+
+        if (nextTestOldGenSizeMB / (double) (data.getHeapSize() - nextTestOldGenSizeMB) > FAIL_TEST_MAX_OLD_NEW_RATIO) {
+            throw new IllegalStateException(String.format("Failed due to Old/New ratio in task '%d'", taskId));
+        }
 
         var nextTest = k8sTestRunnerService.runTest(testProps,
-                getSetFixedHeapSize(testProps.getAppContainerName(), nextTestHeapSizeMB));
+                getSetFixedOldGenSize(testProps.getAppContainerName(), nextTestOldGenSizeMB));
         var nextTaskTest = taskTestService.save(task, nextTest,
-                String.format("Fixed heap size: %d MB", nextTestHeapSizeMB));
+                String.format("Old gen size: %d MB", nextTestOldGenSizeMB));
 
         data.setCurrentTest(nextTest.getUuid());
+        data.setOldGenSize(nextTestOldGenSizeMB);
         taskService.updateModeData(taskId, SerializationUtil.serialize(data));
 
         taskTestService.setProcessed(taskTest);
@@ -175,23 +176,43 @@ public class MaxHeapSizeService implements TuningModeService {
 
     @Override
     public TuningMode getTuningMode() {
-        return TuningMode.MAX_HEAP_SIZE;
+        return TuningMode.SERIAL_GC;
     }
 
-    // не определен минимальный HeapSize - был начальный тест
-    private boolean isInitialTest(MaxHeapSizeDto data) {
-        return isNull(data.getMinHeapSize());
+    private boolean isInitialTest(SerialGCDto data) {
+        return isNull(data.getOldGenSize());
     }
 
-    private int calculateHeapSize(MaxHeapSizeDto data) {
-        return (data.getMinHeapSize() + data.getMaxHeapSize()) / 2;
-    }
-
-    private Consumer<Deployment> getSetFixedHeapSize(String containerName, int heapSizeMB) {
+    private Consumer<Deployment> getSetFixedOldGenSize(String containerName, int oldGenSizeMB) {
         return K8sDeploymentUtil.addJvmOptions(STATIC_JVM_OPTIONS, containerName, options -> {
-            options.removeIf(option -> option.startsWith("-Xmx") || option.startsWith("-Xms"));
-            options.add(String.format("-Xmx%dm", heapSizeMB));
-            options.add(String.format("-Xms%dm", heapSizeMB));
+            options.removeIf(option -> option.startsWith("-XX:New") || option.startsWith("-Xmn"));
+            options.add(String.format("-Xmn%dm", oldGenSizeMB));
         });
+    }
+
+    private int parseOptionSizeToMB(String option) {
+        var lastCharIndex = option.length() - 1;
+        Integer numberIndex = null;
+        for (int i = lastCharIndex - 1; i >= 0; i--) {
+            if (Character.isDigit(option.charAt(i))) {
+                numberIndex = i;
+            } else {
+                break;
+            }
+        }
+        if (isNull(numberIndex)) {
+            throw new IllegalArgumentException(String.format("Can't parse size in '%s'", option));
+        }
+
+        var unit = Character.toLowerCase(option.charAt(lastCharIndex));
+        var size = option.substring(numberIndex, lastCharIndex);
+        return switch (unit) {
+            case 'm' -> Integer.parseInt(size);
+            case 'g' -> Integer.parseInt(size) * 1024;
+            case 'b' -> new BigInteger(size)
+                    .divide(DIVISOR_BYTES_TO_MB)
+                    .intValue();
+            default -> throw new IllegalArgumentException(String.format("Can't parse unit in '%s'", option));
+        };
     }
 }
