@@ -33,7 +33,7 @@ public class GetBaseData {
                           image: exkaset/crypto
                           env:
                             - name: JAVA_TOOL_OPTIONS
-                              value: '-XX:+PrintCommandLineFlags'
+                              value: '-XX:+PrintCommandLineFlags -Xmx470M -Xms470M'
                           envFrom:
                             - configMapRef:
                                 name: crypto-config
@@ -74,7 +74,7 @@ public class GetBaseData {
         return service.saveTuningTestProps(deployment, "crypto",
                 "8080/actuator/prometheus", "exkaset/gatling:1.0",
                 "bash -c \"mvn gatling:test > /dev/null 2> /dev/null &\"",
-                60, 60,
+                90, 400,
                 List.of(new MetricMaxValueDto()
                         .setQuery("sum(gatling_count_total{type=\"ko\", $jvm_tuner_id}) / sum(gatling_count_total{type=\"ok\", $jvm_tuner_id}) * 100")
                         .setMaxValue(10)));

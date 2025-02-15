@@ -1,9 +1,6 @@
 package last.project.jvmtuner.config;
 
-import last.project.jvmtuner.props.MaxHeapSizeProps;
-import last.project.jvmtuner.props.MetricQueriesProps;
-import last.project.jvmtuner.props.MetricsProps;
-import last.project.jvmtuner.props.SerialGCProps;
+import last.project.jvmtuner.props.*;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,5 +35,12 @@ public class PropertiesConfig {
     @ConfigurationProperties(prefix = "modes.serial-gc", ignoreUnknownFields = false)
     public SerialGCProps serialGcProps() {
         return new SerialGCProps();
+    }
+
+    @Bean
+    @Validated
+    @ConfigurationProperties(prefix = "modes.parallel-gc", ignoreUnknownFields = false)
+    public ParallelGCProps parallelGCProps() {
+        return new ParallelGCProps();
     }
 }

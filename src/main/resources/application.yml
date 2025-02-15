@@ -46,3 +46,8 @@ modes:
     retry-on-fail-count: 1
     min-old-gen-size-mb-query: min(jvm_memory_used_bytes{area="heap", id="Tenured Gen", $jvm_tuner_id}) / 1024 / 1024
     step-percent: 10
+  parallel-gc:
+    retry-on-fail-count: 1
+    initial-threads: 2
+    max-threads: 10
+    step: 3

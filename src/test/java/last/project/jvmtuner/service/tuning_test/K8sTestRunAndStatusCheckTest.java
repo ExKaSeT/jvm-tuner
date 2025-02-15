@@ -45,7 +45,7 @@ public class K8sTestRunAndStatusCheckTest {
         var props = GetBaseData.getTestProps(tuningTestPropsService);
 
         this.testUuid = k8sTestRunnerService.runTest(props, K8sDeploymentUtil
-                .addJvmOptions(List.of("-XX:+PrintCommandLineFlags", "-Xmx400M"), "crypto"))
+                .addJvmOptions(List.of("-XX:+PrintCommandLineFlags", "-Xmx470M", "-Xms470M"), "crypto"))
                 .getUuid();
         log.info("UUID of test: " + this.testUuid);
     }
