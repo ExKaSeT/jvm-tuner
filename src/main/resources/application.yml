@@ -51,3 +51,5 @@ modes:
     initial-threads: 2
     max-threads: 10
     step: 3
+  g1-gc:
+    retry-on-fail-count: 1

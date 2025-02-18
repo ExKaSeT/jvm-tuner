@@ -50,11 +50,11 @@ public class K8sDeployServiceTest {
                               protocol: TCP
                           resources:
                             limits:
-                              cpu: 200m
-                              memory: 300Mi
+                              cpu: 2000m
+                              memory: 2000Mi
                             requests:
-                              cpu: 200m
-                              memory: 300Mi
+                              cpu: 2000m
+                              memory: 2000Mi
                           livenessProbe:
                             httpGet:
                               path: /actuator/health/liveness

@@ -43,4 +43,11 @@ public class PropertiesConfig {
     public ParallelGCProps parallelGCProps() {
         return new ParallelGCProps();
     }
+
+    @Bean
+    @Validated
+    @ConfigurationProperties(prefix = "modes.g1-gc", ignoreUnknownFields = false)
+    public G1GCProps G1GCProps() {
+        return new G1GCProps();
+    }
 }
