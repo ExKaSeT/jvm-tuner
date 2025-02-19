@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 @AppTest
 @RequiredArgsConstructor
-public class SerialGcServiceTest {
+public class SerialGCServiceTest {
 
     private final SerialGCService serialGCService;
     private final TuningTestPropsService tuningTestPropsService;

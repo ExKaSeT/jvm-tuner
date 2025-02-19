@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -79,7 +80,7 @@ public class SequentialModeService {
 
         modeDto.setCurrentOptionsIndex(modeDto.getCurrentOptionsIndex() + 1);
         modeDto.setRetryCount(0);
-        if (this.isEnded(modeDto)) {
+        if (isEnded(modeDto)) {
             return modeDto;
         }
 
@@ -104,7 +105,15 @@ public class SequentialModeService {
         return "Test with options: " + String.join(", ", options);
     }
 
-    public boolean isEnded(SequentialModeDto modeDto) {
+    public static boolean isEnded(SequentialModeDto modeDto) {
         return modeDto.getCurrentOptionsIndex() >= modeDto.getTestOptionsList().size();
+    }
+
+    public static List<List<String>> getTestOptionList(String gcOption, List<String> testOptions) {
+        var result = testOptions.stream()
+                .map(option -> List.of(gcOption, option))
+                .collect(Collectors.toList());
+        result.add(List.of(gcOption));
+        return result;
     }
 }

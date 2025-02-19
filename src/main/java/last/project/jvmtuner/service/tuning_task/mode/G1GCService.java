@@ -1,6 +1,6 @@
 package last.project.jvmtuner.service.tuning_task.mode;
 
-import last.project.jvmtuner.dto.mode.ParallelGCDto;
+import last.project.jvmtuner.dto.mode.SequentialModeDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.props.G1GCProps;
@@ -35,12 +35,11 @@ public class G1GCService implements TuningModeService {
     public void start(TuningTestProps testProps) {
         var task = taskService.createTask(testProps, TuningMode.G1_GC);
 
-        var data = sequentialModeService.startMode(task, testProps, TEST_JVM_OPTIONS.stream()
-                .map(option -> List.of(GC_JVM_OPTION, option))
-                .toList());
+        var data = sequentialModeService.startMode(task, testProps,
+                SequentialModeService.getTestOptionList(GC_JVM_OPTION, TEST_JVM_OPTIONS));
         taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
 
-        log.info(String.format("Start G1GC tuning in task '%s'", task.getId()));
+        log.info(String.format("Start tuning in task '%s'", task.getId()));
     }
 
     @Override
@@ -51,13 +50,17 @@ public class G1GCService implements TuningModeService {
         var test = taskTest.getTest();
         var testProps = test.getTuningTestProps();
 
-        var data = SerializationUtil.deserialize(task.getModeData(), ParallelGCDto.class);
+        var data = SerializationUtil.deserialize(task.getModeData(), SequentialModeDto.class);
 
-        // TODO: вызов seq mode
+        data = sequentialModeService.process(data, g1GCProps.getRetryOnFailCount(), testProps, task, test, taskTest);
+        if (SequentialModeService.isEnded(data)) {
+            taskService.endTask(taskId);
+        }
 
         taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
-
         taskTestService.setProcessed(taskTest);
+
+        log.info(String.format("Test '%s' in task '%s' processed", testUuid, taskId));
     }
 
     @Override
