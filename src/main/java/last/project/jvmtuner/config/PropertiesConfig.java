@@ -57,4 +57,11 @@ public class PropertiesConfig {
     public ShenandoahGCProps shenandoahGCProps() {
         return new ShenandoahGCProps();
     }
+
+    @Bean
+    @Validated
+    @ConfigurationProperties(prefix = "modes.z-gc", ignoreUnknownFields = false)
+    public ZGCProps zgcProps() {
+        return new ZGCProps();
+    }
 }

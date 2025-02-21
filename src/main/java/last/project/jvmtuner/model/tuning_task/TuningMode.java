@@ -5,5 +5,6 @@ public enum TuningMode {
     SERIAL_GC,
     PARALLEL_GC,
     G1_GC,
-    SHENANDOAH_GC
+    SHENANDOAH_GC,
+    Z_GC
 }
