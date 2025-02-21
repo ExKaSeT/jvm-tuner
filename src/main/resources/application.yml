@@ -53,3 +53,5 @@ modes:
     step: 3
   g1-gc:
     retry-on-fail-count: 1
+  shenandoah-gc:
+    retry-on-fail-count: 1

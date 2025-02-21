@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -109,11 +109,15 @@ public class SequentialModeService {
         return modeDto.getCurrentOptionsIndex() >= modeDto.getTestOptionsList().size();
     }
 
-    public static List<List<String>> getTestOptionList(String gcOption, List<String> testOptions) {
-        var result = testOptions.stream()
-                .map(option -> List.of(gcOption, option))
-                .collect(Collectors.toList());
+    public static List<List<String>> getTestOptionList(String gcOption, List<List<String>> testOptions) {
+        var result = new ArrayList<List<String>>(testOptions.size() + 1);
         result.add(List.of(gcOption));
+        for (var options : testOptions) {
+            var newOptions = new ArrayList<String>(options.size() + 1);
+            newOptions.add(gcOption);
+            newOptions.addAll(options);
+            result.add(newOptions);
+        }
         return result;
     }
 }

@@ -4,5 +4,6 @@ public enum TuningMode {
     MAX_HEAP_SIZE,
     SERIAL_GC,
     PARALLEL_GC,
-    G1_GC
+    G1_GC,
+    SHENANDOAH_GC
 }

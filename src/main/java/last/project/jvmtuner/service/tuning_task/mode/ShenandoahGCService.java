@@ -3,7 +3,7 @@ package last.project.jvmtuner.service.tuning_task.mode;
 import last.project.jvmtuner.dto.mode.SequentialModeDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
-import last.project.jvmtuner.props.G1GCProps;
+import last.project.jvmtuner.props.ShenandoahGCProps;
 import last.project.jvmtuner.service.tuning_task.TuningTaskService;
 import last.project.jvmtuner.service.tuning_task.TuningTaskTestService;
 import last.project.jvmtuner.service.tuning_task.mode.common.SequentialModeService;
@@ -20,12 +20,14 @@ import java.util.UUID;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class G1GCService implements TuningModeService {
+public class ShenandoahGCService implements TuningModeService {
 
-    private static final List<List<String>> TEST_JVM_OPTIONS = List.of(List.of("-XX:+UseStringDeduplication"));
-    private static final String GC_JVM_OPTION = "-XX:+UseG1GC";
+    private static final List<List<String>> TEST_JVM_OPTIONS = List.of(List.of("-XX:ShenandoahGCMode=iu"),
+            List.of("-XX:+UseNUMA"), List.of("-XX:-UseBiasedLocking"),
+            List.of("-XX:+UseTransparentHugePages", "-XX:+AlwaysPreTouch"));
+    private static final String GC_JVM_OPTION = "-XX:+UseShenandoahGC";
 
-    private final G1GCProps g1GCProps;
+    private final ShenandoahGCProps shenandoahGCProps;
     private final TuningTaskTestService taskTestService;
     private final TuningTaskService taskService;
     private final SequentialModeService sequentialModeService;
@@ -33,7 +35,7 @@ public class G1GCService implements TuningModeService {
     @Override
     @Transactional
     public void start(TuningTestProps testProps) {
-        var task = taskService.createTask(testProps, TuningMode.G1_GC);
+        var task = taskService.createTask(testProps, TuningMode.SHENANDOAH_GC);
 
         var data = sequentialModeService.startMode(task, testProps,
                 SequentialModeService.getTestOptionList(GC_JVM_OPTION, TEST_JVM_OPTIONS));
@@ -52,7 +54,7 @@ public class G1GCService implements TuningModeService {
 
         var data = SerializationUtil.deserialize(task.getModeData(), SequentialModeDto.class);
 
-        data = sequentialModeService.process(data, g1GCProps.getRetryOnFailCount(), testProps, task, test, taskTest);
+        data = sequentialModeService.process(data, shenandoahGCProps.getRetryOnFailCount(), testProps, task, test, taskTest);
         if (SequentialModeService.isEnded(data)) {
             taskService.endTask(taskId);
         }
@@ -65,6 +67,6 @@ public class G1GCService implements TuningModeService {
 
     @Override
     public TuningMode getTuningMode() {
-        return TuningMode.G1_GC;
+        return TuningMode.SHENANDOAH_GC;
     }
 }

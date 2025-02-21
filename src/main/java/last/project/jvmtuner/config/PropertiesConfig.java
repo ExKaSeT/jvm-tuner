@@ -50,4 +50,11 @@ public class PropertiesConfig {
     public G1GCProps G1GCProps() {
         return new G1GCProps();
     }
+
+    @Bean
+    @Validated
+    @ConfigurationProperties(prefix = "modes.shenandoah-gc", ignoreUnknownFields = false)
+    public ShenandoahGCProps shenandoahGCProps() {
+        return new ShenandoahGCProps();
+    }
 }
