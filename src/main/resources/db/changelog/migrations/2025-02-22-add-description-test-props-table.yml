@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-description-test-props-table
+      author: admin
+      changes:
+        - addColumn:
+            tableName: tuning_test_props
+            columns:
+              - column:
+                  name: description
+                  type: VARCHAR

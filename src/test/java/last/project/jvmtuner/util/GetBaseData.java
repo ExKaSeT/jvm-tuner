@@ -77,6 +77,6 @@ public class GetBaseData {
                 90, 400,
                 List.of(new MetricMaxValueDto()
                         .setQuery("sum(gatling_count_total{type=\"ko\", $jvm_tuner_id}) / sum(gatling_count_total{type=\"ok\", $jvm_tuner_id}) * 100")
-                        .setMaxValue(10)));
+                        .setMaxValue(10)), null);
     }
 }

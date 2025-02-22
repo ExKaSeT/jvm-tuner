@@ -1,5 +1,6 @@
 package last.project.jvmtuner.service.tuning_test;
 
+import jakarta.annotation.Nullable;
 import last.project.jvmtuner.dao.tuning_test.TuningTestPropsRepository;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
 import last.project.jvmtuner.model.tuning_test.MetricMaxValue;
@@ -22,7 +23,8 @@ public class TuningTestPropsService {
     public TuningTestProps saveTuningTestProps(String deployment, String appContainerName, String appMetricPortWithPath,
                                                String gatlingImage, String gatlingExecCommand,
                                                int startTestTimeoutSec, int testDurationSec,
-                                               List<MetricMaxValueDto> metricMaxValueDto) {
+                                               List<MetricMaxValueDto> metricMaxValueDto,
+                                               @Nullable String description) {
         var props = new TuningTestProps();
         var metricMaxValues = metricMaxValueDto.stream()
                 .map(o -> new MetricMaxValue()
@@ -42,7 +44,8 @@ public class TuningTestPropsService {
                 .setAppContainerName(appContainerName)
                 .setGatlingExecCommand(gatlingExecCommand)
                 .setTestDurationSec(testDurationSec)
-                .setStartTestTimeoutSec(startTestTimeoutSec);
+                .setStartTestTimeoutSec(startTestTimeoutSec)
+                .setDescription(description);
 
         return tuningTestPropsRepository.save(props);
     }

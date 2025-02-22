@@ -17,6 +17,9 @@ public class TuningTestProps {
     @SequenceGenerator(name = "tuning_test_props_id_seq", sequenceName = "tuning_test_props_id_seq", allocationSize = 1)
     private Long id;
 
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "prepared_deployment", nullable = false)
     private String preparedDeployment;
 
