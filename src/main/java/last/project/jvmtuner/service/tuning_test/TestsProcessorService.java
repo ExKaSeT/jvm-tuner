@@ -1,6 +1,5 @@
 package last.project.jvmtuner.service.tuning_test;
 
-import last.project.jvmtuner.dao.tuning_test.TuningTestRepository;
 import last.project.jvmtuner.model.tuning_test.TuningTest;
 import last.project.jvmtuner.model.tuning_test.TuningTestStatus;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +20,12 @@ import static last.project.jvmtuner.model.tuning_test.TuningTestStatus.*;
 public class TestsProcessorService {
 
     private final RunningTestCheckerService checkService;
-    private final TuningTestRepository tuningTestRepository;
     private final EndTestProcessService endTestProcessService;
+    private final TuningTestService testService;
     private final ExecutorService executor = Executors.newFixedThreadPool(10);
 
     public void processTests() {
-        tuningTestRepository.getAllByStatus(NOT_READY).stream()
+        testService.getAll(NOT_READY).stream()
                 .map(TuningTest::getUuid)
                 .forEach(
                         uuid -> CompletableFuture
@@ -34,7 +33,7 @@ public class TestsProcessorService {
                                 .exceptionally(getFailTestFunction(uuid, FAILED_READY))
                 );
 
-        tuningTestRepository.getAllByStatus(RUNNING).stream()
+        testService.getAll(RUNNING).stream()
                 .map(TuningTest::getUuid)
                 .forEach(
                         uuid -> CompletableFuture
@@ -42,7 +41,7 @@ public class TestsProcessorService {
                                 .exceptionally(getFailTestFunction(uuid, FAILED_RUNNING))
                 );
 
-        tuningTestRepository.getAllByStatus(ENDED).stream()
+        testService.getAll(ENDED).stream()
                 .map(TuningTest::getUuid)
                 .forEach(
                         uuid -> CompletableFuture
@@ -55,7 +54,7 @@ public class TestsProcessorService {
 
     private Function<Throwable, Void> getFailTestFunction(UUID test, TuningTestStatus status) {
         return ex -> {
-            checkService.failTest(test, status, ex);
+            testService.failTest(test, status, ex);
             checkService.deploymentReplicasToZero(test);
             return null;
         };

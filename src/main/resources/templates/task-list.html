@@ -13,6 +13,9 @@
             margin-bottom: 15px;
             background: white;
             transition: transform 0.2s ease-in-out;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .task-card:hover {
             transform: scale(1.02);
@@ -22,6 +25,25 @@
             font-size: 18px;
         }
     </style>
+    <script>
+        function confirmDelete(taskId) {
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            document.getElementById('confirmDeleteButton').setAttribute('onclick', `deleteTask(${taskId})`);
+            modal.show();
+        }
+
+        function deleteTask(taskId) {
+            fetch(`/tasks/${taskId}`, {
+                method: 'DELETE'
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert("Ошибка при удалении задачи");
+                }
+            });
+        }
+    </script>
 </head>
 <body>
 <div class="header" th:replace="~{fragments/header :: header}"></div>
@@ -29,12 +51,34 @@
 <div class="container mt-4">
     <h2 class="mb-3">Список задач</h2>
     <div class="list-group">
-        <div th:each="task : ${tasks}" class="task-card list-group-item" th:onclick="|window.location.href='/tasks/${task.id}'|" style="cursor: pointer;">
-            <div class="task-header" th:text="'#' + ${task.id}"></div>
-            <div class="task-text">Режим: <span th:text="${task.mode}"></span></div>
-            <div class="task-text">Статус: <span th:text="${task.status}"></span></div>
-            <div class="task-text">Создано: <span th:text="${#temporals.format(task.createdTime, 'dd-MM-yyyy HH:mm')}"></span></div>
-            <div class="task-text" th:if="${task.completedTime != null}">Завершено: <span th:text="${#temporals.format(task.completedTime, 'dd-MM-yyyy HH:mm')}"></span></div>
+        <div th:each="task : ${tasks}" class="task-card list-group-item">
+            <div onclick="window.location.href='/tasks/' + this.getAttribute('data-id')" th:attr="data-id=${task.id}" style="cursor: pointer; flex-grow: 1;">
+                <div class="task-header" th:text="'#' + ${task.id}"></div>
+                <div class="task-text">Режим: <span th:text="${task.mode}"></span></div>
+                <div class="task-text">Статус: <span th:text="${task.status}"></span></div>
+                <div class="task-text">Создано: <span th:text="${#temporals.format(task.createdTime, 'dd-MM-yyyy HH:mm')}"></span></div>
+                <div class="task-text" th:if="${task.completedTime != null}">Завершено: <span th:text="${#temporals.format(task.completedTime, 'dd-MM-yyyy HH:mm')}"></span></div>
+            </div>
+            <button class="btn btn-danger" th:attr="onclick='confirmDelete(' + ${task.id} + ')'"><i class="bi bi-trash"></i> Удалить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить эту задачу?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton">Удалить</button>
+            </div>
         </div>
     </div>
 </div>

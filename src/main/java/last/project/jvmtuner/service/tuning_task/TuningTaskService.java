@@ -6,6 +6,7 @@ import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_task.TuningTaskStatus;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
+import last.project.jvmtuner.service.tuning_test.TuningTestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -20,8 +21,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TuningTaskService {
 
-    private final TuningTaskRepository tuningTaskRepository;
+    private final TuningTaskRepository taskRepository;
     private final TuningTaskTestService taskTestService;
+    private final TuningTestService testService;
 
     public TuningTask createTask(TuningTestProps props, TuningMode mode) {
         var task = new TuningTask()
@@ -29,20 +31,20 @@ public class TuningTaskService {
                 .setStatus(TuningTaskStatus.RUNNING)
                 .setCreatedTime(Instant.now())
                 .setTuningTestProps(props);
-        return tuningTaskRepository.save(task);
+        return taskRepository.save(task);
     }
 
     public TuningTask updateModeData(Long taskId, String modeData) {
-        var task = tuningTaskRepository.findById(taskId).get();
+        var task = taskRepository.findById(taskId).get();
         task.setModeData(modeData);
-        return tuningTaskRepository.save(task);
+        return taskRepository.save(task);
     }
 
     @Transactional
     public void failTask(Long taskId, Throwable ex) {
-        var task = tuningTaskRepository.findById(taskId).get();
+        var task = taskRepository.findById(taskId).get();
         task.setStatus(TuningTaskStatus.FAILED);
-        tuningTaskRepository.save(task);
+        taskRepository.save(task);
 
         task.getTaskTests().stream()
                 .filter(taskTest -> !taskTest.getProcessed())
@@ -52,10 +54,10 @@ public class TuningTaskService {
     }
 
     public void endTask(Long taskId) {
-        var task = tuningTaskRepository.findById(taskId).get();
+        var task = taskRepository.findById(taskId).get();
         task.setStatus(TuningTaskStatus.COMPLETED);
         task.setCompletedTime(Instant.now());
-        tuningTaskRepository.save(task);
+        taskRepository.save(task);
 
         task.getTaskTests().stream()
                 .filter(taskTest -> !taskTest.getProcessed())
@@ -65,7 +67,7 @@ public class TuningTaskService {
     }
 
     public List<TuningTaskResponseDto> getAllTasks() {
-        return tuningTaskRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
+        return taskRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
                 .map(task -> new TuningTaskResponseDto()
                         .setId(task.getId())
                         .setMode(task.getMode())
@@ -73,5 +75,12 @@ public class TuningTaskService {
                         .setCreatedTime(task.getCreatedTime())
                         .setCompletedTime(task.getCompletedTime())
                 ).toList();
+    }
+
+    @Transactional
+    public void delete(long taskId) {
+        var task = taskRepository.findById(taskId).get();
+        task.getTaskTests().forEach(taskTest -> testService.delete(taskTest.getTuningTestUuid()));
+        taskRepository.deleteById(taskId);
     }
 }

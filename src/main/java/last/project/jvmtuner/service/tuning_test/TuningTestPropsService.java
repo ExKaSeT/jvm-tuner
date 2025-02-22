@@ -11,6 +11,7 @@ import last.project.jvmtuner.util.K8sDeploymentUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,5 +59,10 @@ public class TuningTestPropsService {
                         .setId(prop.getId())
                         .setDescription(prop.getDescription()))
                 .toList();
+    }
+
+    @Transactional
+    public void delete(long propId) {
+        tuningTestPropsRepository.deleteById(propId);
     }
 }

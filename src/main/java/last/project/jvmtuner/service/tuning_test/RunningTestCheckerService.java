@@ -3,10 +3,8 @@ package last.project.jvmtuner.service.tuning_test;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import last.project.jvmtuner.dao.tuning_test.TuningTestRepository;
 import last.project.jvmtuner.dto.metric.GetRangeMetricResponseDto;
 import last.project.jvmtuner.model.tuning_test.TuningTest;
-import last.project.jvmtuner.model.tuning_test.TuningTestStatus;
 import last.project.jvmtuner.props.MetricsProps;
 import last.project.jvmtuner.service.MetricService;
 import last.project.jvmtuner.util.K8sDeploymentUtil;
@@ -31,7 +29,7 @@ import static last.project.jvmtuner.model.tuning_test.TuningTestStatus.*;
 @RequiredArgsConstructor
 public class RunningTestCheckerService {
 
-    private final TuningTestRepository tuningTestRepository;
+    private final TuningTestService testService;
     private final KubernetesClient k8sClient;
     private final K8sExecService k8sExecService;
     private final MetricService metricService;
@@ -39,9 +37,9 @@ public class RunningTestCheckerService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public void checkNotReadyTest(UUID testUuid) {
-        var test = tuningTestRepository.findById(testUuid).get();
+        var test = testService.get(testUuid);
 
-        this.checkTestTimeout(test);
+        testService.checkTestTimeout(test);
 
         var deployment = this.deserealizeAndCheckDeployment(test);
         var deploymentName = deployment.getMetadata().getName();
@@ -79,16 +77,13 @@ public class RunningTestCheckerService {
         k8sExecService.execCommandInPod(pod.getMetadata().getName(), namespace,
                 this.parseExecCmd(test.getTuningTestProps().getGatlingExecCommand()));
 
-        test.setStartedTestTime(Instant.now());
-        test.setPodName(pod.getMetadata().getName());
-        test.setStatus(RUNNING);
-        test = tuningTestRepository.save(test);
+        test = testService.update(testUuid, RUNNING, pod.getMetadata().getName(), Instant.now());
         log.info(String.format("Test '%s' status changed to %s", test.getUuid(), test.getStatus()));
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public void checkRunningTest(UUID testUuid) {
-        var test = tuningTestRepository.findById(testUuid).get();
+        var test = testService.get(testUuid);
 
         var podName = test.getPodName();
         if (isNull(podName)) {
@@ -143,8 +138,7 @@ public class RunningTestCheckerService {
         }
 
         if (Instant.now().isAfter(endTime)) {
-            test.setStatus(ENDED);
-            test = tuningTestRepository.save(test);
+            test = testService.update(testUuid, ENDED, null, null);
             log.info(String.format("Test '%s' status changed to %s", test.getUuid(), test.getStatus()));
             this.deploymentReplicasToZero(test);
         } else {
@@ -166,17 +160,9 @@ public class RunningTestCheckerService {
         return deployment;
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
-    public void failTest(UUID testUuid, TuningTestStatus newStatus, Throwable ex) {
-        var test = tuningTestRepository.findById(testUuid).get();
-        test.setStatus(newStatus);
-        tuningTestRepository.save(test);
-        log.error(String.format("Test '%s' failed: %s", test.getUuid(), test.getStatus().name()), ex);
-    }
-
     @Transactional
     public void deploymentReplicasToZero(UUID testUuid) {
-        this.deploymentReplicasToZero(tuningTestRepository.findById(testUuid).get());
+        this.deploymentReplicasToZero(testService.get(testUuid));
     }
 
     private void deploymentReplicasToZero(TuningTest test) {
@@ -185,14 +171,6 @@ public class RunningTestCheckerService {
                 .inNamespace(deployment.getMetadata().getNamespace())
                 .withName(deployment.getMetadata().getName())
                 .scale(0);
-    }
-
-    private void checkTestTimeout(TuningTest test) {
-        var timeout = Instant.now().getEpochSecond() - test.getDeployedTime().getEpochSecond() >
-                test.getTuningTestProps().getStartTestTimeoutSec();
-        if (timeout) {
-            throw new IllegalStateException(String.format("Test '%s' timeout", test.getUuid()));
-        }
     }
 
     private List<String> parseExecCmd(String cmd) {
