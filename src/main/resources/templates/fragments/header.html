@@ -1,0 +1,12 @@
+<div th:fragment="header">
+    <nav class="navbar navbar-light bg-white shadow-sm fixed-top">
+        <div class="container d-flex justify-content-between align-items-center py-2">
+            <a class="navbar-brand fw-bold" href="#">JVM Tuner</a>
+            <div>
+                <a class="text-dark fw-semibold me-3 text-decoration-none" th:href="@{/tasks}">Задачи</a>
+                <a class="text-dark fw-semibold text-decoration-none" th:href="@{/properties}">Конфигурации</a>
+            </div>
+        </div>
+    </nav>
+    <div style="height: 56px;"></div>
+</div>

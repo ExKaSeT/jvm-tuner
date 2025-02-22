@@ -1,16 +1,19 @@
 package last.project.jvmtuner.service.tuning_task;
 
 import last.project.jvmtuner.dao.tuning_task.TuningTaskRepository;
+import last.project.jvmtuner.dto.tuning_task.TuningTaskResponseDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_task.TuningTaskStatus;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -59,5 +62,16 @@ public class TuningTaskService {
                 .forEach(taskTestService::setProcessed);
 
         log.info(String.format("Task '%d' completed", taskId));
+    }
+
+    public List<TuningTaskResponseDto> getAllTasks() {
+        return tuningTaskRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
+                .map(task -> new TuningTaskResponseDto()
+                        .setId(task.getId())
+                        .setMode(task.getMode())
+                        .setStatus(task.getStatus())
+                        .setCreatedTime(task.getCreatedTime())
+                        .setCompletedTime(task.getCompletedTime())
+                ).toList();
     }
 }
