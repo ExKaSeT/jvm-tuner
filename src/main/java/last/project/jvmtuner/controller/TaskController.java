@@ -4,10 +4,7 @@ import last.project.jvmtuner.service.tuning_task.TuningTaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/tasks")
@@ -24,8 +21,8 @@ public class TaskController {
     }
 
     @DeleteMapping("/{taskId}")
-    public String deleteTask(Model model, @PathVariable Long taskId) {
+    @ResponseBody
+    public void deleteTask(@PathVariable Long taskId) {
         taskService.delete(taskId);
-        return showTasks(model);
     }
 }

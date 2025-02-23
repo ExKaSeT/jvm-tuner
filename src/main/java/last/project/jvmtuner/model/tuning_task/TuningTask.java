@@ -44,7 +44,7 @@ public class TuningTask {
     @EqualsAndHashCode.Exclude
     private TuningTestProps tuningTestProps;
 
-    @OneToMany(mappedBy = "task")
+    @OneToMany(mappedBy = "task", cascade = CascadeType.REMOVE, orphanRemoval = true)
     @PrimaryKeyJoinColumn
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

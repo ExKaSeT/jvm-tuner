@@ -5,12 +5,14 @@ import last.project.jvmtuner.dto.tuning_task.TuningTaskResponseDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_task.TuningTaskStatus;
+import last.project.jvmtuner.model.tuning_task.TuningTaskTest;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.service.tuning_test.TuningTestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -77,10 +79,11 @@ public class TuningTaskService {
                 ).toList();
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public void delete(long taskId) {
         var task = taskRepository.findById(taskId).get();
-        task.getTaskTests().forEach(taskTest -> testService.delete(taskTest.getTuningTestUuid()));
+        var tests = task.getTaskTests().stream().map(TuningTaskTest::getTuningTestUuid).toList();
         taskRepository.deleteById(taskId);
+        tests.forEach(testService::delete);
     }
 }

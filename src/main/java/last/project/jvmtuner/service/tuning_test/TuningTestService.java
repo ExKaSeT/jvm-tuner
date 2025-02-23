@@ -65,7 +65,6 @@ public class TuningTestService {
         return testRepository.getAllByStatus(testStatus);
     }
 
-    @Transactional
     public void delete(UUID testUuid) {
         testRepository.deleteById(testUuid);
     }
