@@ -11,9 +11,10 @@ import java.time.Instant;
 @Data
 @Accessors(chain = true)
 public class TuningTaskResponseDto {
-        private Long id;
-        private TuningMode mode;
-        private TuningTaskStatus status;
-        private Instant createdTime;
-        private Instant completedTime;
+    private Long id;
+    private TuningMode mode;
+    private TuningTaskStatus status;
+    private Instant createdTime;
+    private Instant completedTime;
+    private Long propsId;
 }

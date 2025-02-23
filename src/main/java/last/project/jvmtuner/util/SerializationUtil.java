@@ -2,6 +2,8 @@ package last.project.jvmtuner.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import lombok.SneakyThrows;
 
 public class SerializationUtil {
 
@@ -21,5 +23,13 @@ public class SerializationUtil {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @SneakyThrows
+    public static String beautifyJSON(String json) {
+        var objectMapper = new ObjectMapper();
+        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        var jsonObject = objectMapper.readValue(json, Object.class);
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonObject);
     }
 }

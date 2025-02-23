@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <title>Детали задачи</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleElement(button) {
+            let elementId = button.getAttribute('data-id');
+            let element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = (element.style.display === 'none') ? 'block' : 'none';
+            }
+        }
+    </script>
+    <style>
+        .card {
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            background: white;
+        }
+        .toggle-btn {
+            margin-bottom: 10px;
+            width: 100%;
+            text-align: left;
+        }
+        .metrics-list p {
+            margin: 0;
+            padding: 2px 0;
+        }
+        .task-text {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="header" th:replace="~{fragments/header :: header}"></div>
+<div class="container mt-4">
+    <h2>Детали задачи</h2>
+    <div class="card p-3">
+        <h5 th:text="'Задача #' + ${task.taskDto.id}"></h5>
+        <div class="task-text">Режим: <span th:text="${task.taskDto.mode}"></span></div>
+        <div class="task-text">Статус: <span th:text="${task.taskDto.status}"></span></div>
+        <div class="task-text">Создано: <span th:text="${#temporals.format(task.taskDto.createdTime, 'dd-MM-yyyy HH:mm')}"></span></div>
+        <div class="task-text" th:if="${task.taskDto.completedTime != null}">
+            Завершено: <span th:text="${#temporals.format(task.taskDto.completedTime, 'dd-MM-yyyy HH:mm')}"></span>
+        </div>
+        <div class="task-text" th:if="${task.taskDto.propsId != null}">
+            Конфигурация: <a th:href="@{'/properties/' + ${task.taskDto.propsId}}" th:text="'Смотреть'" class="btn btn-sm btn-primary"></a>
+        </div>
+    </div>
+
+    <h3>Список тестов</h3>
+    <div class="list-group">
+        <div th:each="test : ${task.testDto}" class="card p-3">
+            <h5 th:text="'Тест #' + ${test.uuid}"></h5>
+            <div class="task-text">Статус: <span th:text="${test.status}"></span></div>
+            <div class="task-text">Описание: <span th:text="${test.description}"></span></div>
+            <div class="task-text">Pod: <span th:text="${test.podName}"></span></div>
+            <div class="task-text">Дата развертывания: <span th:text="${#temporals.format(test.deployedTime, 'dd-MM-yyyy HH:mm')}"></span></div>
+            <div class="task-text" th:if="${test.startedTestTime != null}">
+                Дата начала теста: <span th:text="${#temporals.format(test.startedTestTime, 'dd-MM-yyyy HH:mm')}"></span>
+            </div>
+
+            <button class="btn btn-outline-primary toggle-btn" th:if="${test.deployment != null}"
+                    th:data-id="'deployment-' + ${test.uuid}" onclick="toggleElement(this)">
+                Показать развертывание
+            </button>
+            <pre th:id="'deployment-' + ${test.uuid}" style="display: none;" th:text="${test.deployment}"></pre>
+
+            <button class="btn btn-outline-success toggle-btn" th:if="${test.testMetricsDto != null}"
+                    th:data-id="'metrics-' + ${test.uuid}" onclick="toggleElement(this)">
+                Показать метрики
+            </button>
+            <div th:id="'metrics-' + ${test.uuid}" style="display: none;" class="metrics-list">
+                <p th:if="${test.testMetricsDto != null}">Потребление CPU: <span th:text="${test.testMetricsDto.cpuUsageAvg} + ' %'"></span></p>
+                <p th:if="${test.testMetricsDto != null}">Троттлинг CPU: <span th:text="${test.testMetricsDto.cpuThrottlingAvg} + ' %'"></span></p>
+                <p th:if="${test.testMetricsDto != null}">Потребление памяти: <span th:text="${test.testMetricsDto.memoryUsageAvg} + ' MB'"></span></p>
+                <p th:if="${test.testMetricsDto != null}">Память WSS: <span th:text="${test.testMetricsDto.memoryWssAvg} + ' MB'"></span></p>
+                <p th:if="${test.testMetricsDto != null}">Память RSS: <span th:text="${test.testMetricsDto.memoryRssAvg} + ' MB'"></span></p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

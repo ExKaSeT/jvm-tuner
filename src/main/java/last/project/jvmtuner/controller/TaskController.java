@@ -25,4 +25,11 @@ public class TaskController {
     public void deleteTask(@PathVariable Long taskId) {
         taskService.delete(taskId);
     }
+
+    @GetMapping("/{taskId}")
+    public String getTask(@PathVariable Long taskId, Model model) {
+        var taskDetails = taskService.getDetails(taskId);
+        model.addAttribute("task", taskDetails);
+        return "task-details";
+    }
 }

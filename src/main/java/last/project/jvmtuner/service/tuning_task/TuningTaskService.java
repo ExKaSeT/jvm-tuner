@@ -1,13 +1,16 @@
 package last.project.jvmtuner.service.tuning_task;
 
 import last.project.jvmtuner.dao.tuning_task.TuningTaskRepository;
+import last.project.jvmtuner.dto.tuning_task.TuningTaskDetailsResponseDto;
 import last.project.jvmtuner.dto.tuning_task.TuningTaskResponseDto;
+import last.project.jvmtuner.dto.tuning_test.TuningTestResponseDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_task.TuningTaskStatus;
 import last.project.jvmtuner.model.tuning_task.TuningTaskTest;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.service.tuning_test.TuningTestService;
+import last.project.jvmtuner.util.SerializationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -16,7 +19,11 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+
+import static java.util.Objects.nonNull;
 
 @Service
 @Slf4j
@@ -85,5 +92,46 @@ public class TuningTaskService {
         var tests = task.getTaskTests().stream().map(TuningTaskTest::getTuningTestUuid).toList();
         taskRepository.deleteById(taskId);
         tests.forEach(testService::delete);
+    }
+
+    @Transactional
+    public TuningTaskDetailsResponseDto getDetails(long taskId) {
+        var task = taskRepository.findById(taskId).get();
+        var response = new TuningTaskDetailsResponseDto()
+                .setTaskDto(new TuningTaskResponseDto()
+                        .setId(task.getId())
+                        .setMode(task.getMode())
+                        .setStatus(task.getStatus())
+                        .setCreatedTime(task.getCreatedTime())
+                        .setCompletedTime(task.getCompletedTime())
+                        .setPropsId(task.getTuningTestProps().getId())
+                );
+        var testDtoList = new ArrayList<TuningTestResponseDto>();
+        for (var taskTest : task.getTaskTests()) {
+            var test = taskTest.getTest();
+            var testMetrics = test.getTuningTestMetrics();
+            TuningTestResponseDto.TestMetricsDto testMetricsDto = null;
+            if (nonNull(testMetrics)) {
+                testMetricsDto = new TuningTestResponseDto.TestMetricsDto()
+                        .setCpuUsageAvg(testMetrics.getCpuUsageAvg())
+                        .setCpuThrottlingAvg(testMetrics.getCpuThrottlingAvg())
+                        .setMemoryRssAvg(testMetrics.getMemoryRssAvg())
+                        .setMemoryWssAvg(testMetrics.getMemoryWssAvg())
+                        .setMemoryUsageAvg(testMetrics.getMemoryUsageAvg());
+            }
+            var testDto = new TuningTestResponseDto()
+                    .setUuid(test.getUuid())
+                    .setStatus(test.getStatus())
+                    .setDescription(taskTest.getDescription())
+                    .setPodName(test.getPodName())
+                    .setDeployedTime(test.getDeployedTime())
+                    .setStartedTestTime(test.getStartedTestTime())
+                    .setDeployment(SerializationUtil.beautifyJSON(test.getDeployment()))
+                    .setTestMetricsDto(testMetricsDto);
+            testDtoList.add(testDto);
+        }
+        testDtoList.sort(Comparator.comparingLong(testDto -> testDto.getDeployedTime().toEpochMilli()));
+        response.setTestDto(testDtoList);
+        return response;
     }
 }
