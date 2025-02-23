@@ -48,8 +48,8 @@
 <body>
 <div class="header" th:replace="~{fragments/header :: header}"></div>
 
-<div class="container mt-4">
-    <h2 class="mb-3">Список задач</h2>
+<div class="container mt-5">
+    <h4 class="mb-3">Список задач</h4>
     <div class="list-group">
         <div th:each="task : ${tasks}" class="task-card list-group-item">
             <div onclick="window.location.href='/tasks/' + this.getAttribute('data-id')" th:attr="data-id=${task.id}" style="cursor: pointer; flex-grow: 1;">

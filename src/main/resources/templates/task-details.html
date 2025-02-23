@@ -37,10 +37,10 @@
 </head>
 <body>
 <div class="header" th:replace="~{fragments/header :: header}"></div>
-<div class="container mt-4">
-    <h2>Детали задачи</h2>
+<div class="container mt-5">
+    <h4>Задача</h4>
     <div class="card p-3">
-        <h5 th:text="'Задача #' + ${task.taskDto.id}"></h5>
+        <h5 th:text="'#' + ${task.taskDto.id}"></h5>
         <div class="task-text">Режим: <span th:text="${task.taskDto.mode}"></span></div>
         <div class="task-text">Статус: <span th:text="${task.taskDto.status}"></span></div>
         <div class="task-text">Создано: <span th:text="${#temporals.format(task.taskDto.createdTime, 'dd-MM-yyyy HH:mm')}"></span></div>
@@ -48,14 +48,16 @@
             Завершено: <span th:text="${#temporals.format(task.taskDto.completedTime, 'dd-MM-yyyy HH:mm')}"></span>
         </div>
         <div class="task-text" th:if="${task.taskDto.propsId != null}">
-            Конфигурация: <a th:href="@{'/properties/' + ${task.taskDto.propsId}}" th:text="'Смотреть'" class="btn btn-sm btn-primary"></a>
+            <a th:href="@{'/properties/' + ${task.taskDto.propsId}}" class="btn btn-outline-primary btn-sm">
+                Конфигурация
+            </a>
         </div>
     </div>
 
-    <h3>Список тестов</h3>
+    <h4>Список тестов</h4>
     <div class="list-group">
         <div th:each="test : ${task.testDto}" class="card p-3">
-            <h5 th:text="'Тест #' + ${test.uuid}"></h5>
+            <h5 th:text="'#' + ${test.uuid}"></h5>
             <div class="task-text">Статус: <span th:text="${test.status}"></span></div>
             <div class="task-text">Описание: <span th:text="${test.description}"></span></div>
             <div class="task-text">Pod: <span th:text="${test.podName}"></span></div>
@@ -75,11 +77,21 @@
                 Показать метрики
             </button>
             <div th:id="'metrics-' + ${test.uuid}" style="display: none;" class="metrics-list">
-                <p th:if="${test.testMetricsDto != null}">Потребление CPU: <span th:text="${test.testMetricsDto.cpuUsageAvg} + ' %'"></span></p>
-                <p th:if="${test.testMetricsDto != null}">Троттлинг CPU: <span th:text="${test.testMetricsDto.cpuThrottlingAvg} + ' %'"></span></p>
-                <p th:if="${test.testMetricsDto != null}">Потребление памяти: <span th:text="${test.testMetricsDto.memoryUsageAvg} + ' MB'"></span></p>
-                <p th:if="${test.testMetricsDto != null}">Память WSS: <span th:text="${test.testMetricsDto.memoryWssAvg} + ' MB'"></span></p>
-                <p th:if="${test.testMetricsDto != null}">Память RSS: <span th:text="${test.testMetricsDto.memoryRssAvg} + ' MB'"></span></p>
+                <p th:if="${test.testMetricsDto != null}">
+                    Потребление CPU: <span th:text="${#numbers.formatDecimal(test.testMetricsDto.cpuUsageAvg, 2, 'COMMA', 2, 'POINT')} + ' %'"></span>
+                </p>
+                <p th:if="${test.testMetricsDto != null}">
+                    Троттлинг CPU: <span th:text="${#numbers.formatDecimal(test.testMetricsDto.cpuThrottlingAvg, 2, 'COMMA', 2, 'POINT')} + ' %'"></span>
+                </p>
+                <p th:if="${test.testMetricsDto != null}">
+                    Потребление памяти: <span th:text="${#numbers.formatDecimal(test.testMetricsDto.memoryUsageAvg, 2, 'COMMA', 2, 'POINT')} + ' MB'"></span>
+                </p>
+                <p th:if="${test.testMetricsDto != null}">
+                    Память WSS: <span th:text="${#numbers.formatDecimal(test.testMetricsDto.memoryWssAvg, 2, 'COMMA', 2, 'POINT')} + ' MB'"></span>
+                </p>
+                <p th:if="${test.testMetricsDto != null}">
+                    Память RSS: <span th:text="${#numbers.formatDecimal(test.testMetricsDto.memoryRssAvg, 2, 'COMMA', 2, 'POINT')} + ' MB'"></span>
+                </p>
             </div>
         </div>
     </div>
