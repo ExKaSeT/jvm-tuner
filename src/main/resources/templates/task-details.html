@@ -60,11 +60,11 @@
             <h5 th:text="'#' + ${test.uuid}"></h5>
             <div class="task-text">Статус: <span th:text="${test.status}"></span></div>
             <div class="task-text">Описание: <span th:text="${test.description}"></span></div>
-            <div class="task-text">Pod: <span th:text="${test.podName}"></span></div>
             <div class="task-text">Дата развертывания: <span th:text="${#temporals.format(test.deployedTime, 'dd-MM-yyyy HH:mm')}"></span></div>
             <div class="task-text" th:if="${test.startedTestTime != null}">
                 Дата начала теста: <span th:text="${#temporals.format(test.startedTestTime, 'dd-MM-yyyy HH:mm')}"></span>
             </div>
+            <div class="task-text" th:if="${test.podName != null}">Pod: <span th:text="${test.podName}"></span></div>
 
             <button class="btn btn-outline-primary toggle-btn" th:if="${test.deployment != null}"
                     th:data-id="'deployment-' + ${test.uuid}" onclick="toggleElement(this)">
