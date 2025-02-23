@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <title>Конфигурация</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleElement(button) {
+            let elementId = button.getAttribute('data-id');
+            let element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = (element.style.display === 'none') ? 'block' : 'none';
+            }
+        }
+
+        function createTest() {
+            let mode = document.getElementById("modeSelect").value;
+            let propsId = document.getElementById("propsId").value;
+            if (!mode) {
+                alert("Выберите режим тестирования!");
+                return;
+            }
+            fetch(`/tasks?propId=${propsId}&mode=${mode}`, {
+                method: "POST"
+            }).then(response => {
+                if (response.ok) {
+                    alert("Тест успешно создан!");
+                    location.reload();
+                } else {
+                    alert("Ошибка при создании теста");
+                }
+            }).catch(error => console.error("Ошибка:", error));
+        }
+    </script>
+    <style>
+        .card {
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            background: white;
+            padding: 15px;
+        }
+        .toggle-btn {
+            margin-bottom: 10px;
+            width: 100%;
+            text-align: left;
+        }
+        .metrics-list p {
+            margin: 0;
+            padding: 2px 0;
+        }
+        .task-text {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="header" th:replace="~{fragments/header :: header}"></div>
+
+<div class="container mt-5">
+    <h4>Конфигурация</h4>
+
+    <div class="card p-3">
+        <h5>#<span th:text="${prop.id}"></span></h5>
+        <div class="task-text">Контейнер: <span th:text="${prop.appContainerName}"></span></div>
+        <div class="task-text">Команда запуска: <span th:text="${prop.gatlingExecCommand}"></span></div>
+        <div class="task-text">Таймаут: <span th:text="${prop.startTestTimeoutSec} + ' сек'"></span></div>
+        <div class="task-text">Длительность теста: <span th:text="${prop.testDurationSec} + ' сек'"></span></div>
+
+        <button class="btn btn-outline-primary btn-sm toggle-btn" th:if="${prop.preparedDeployment != null}"
+                th:attr="data-id='deployment-' + ${prop.id}" onclick="toggleElement(this)">
+            Показать шаблон развертывания
+        </button>
+        <pre th:id="'deployment-' + ${prop.id}" style="display: none;" th:text="${prop.preparedDeployment}"></pre>
+
+        <button class="btn btn-outline-success btn-sm toggle-btn" th:if="${prop.metricMaxValues != null}"
+                th:attr="data-id='metrics-' + ${prop.id}" onclick="toggleElement(this)">
+            Показать максимальные значения метрик
+        </button>
+        <div th:id="'metrics-' + ${prop.id}" style="display: none;" class="metrics-list">
+            <div th:each="metric : ${prop.metricMaxValues}">
+                <p>Запрос: <span th:text="${metric.query}"></span></p>
+                <p>Максимальное значение: <span th:text="${metric.maxValue}"></span></p>
+                <hr>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <input type="hidden" th:id="propsId" th:value="${prop.id}">
+        <label for="modeSelect"></label>
+        <select id="modeSelect" class="form-select">
+            <option value="">-- Выберите режим --</option>
+            <option th:each="mode : ${prop.tuningModes}" th:value="${mode}" th:text="${mode}"></option>
+        </select>
+        <button class="btn btn-primary mt-3" onclick="createTest()">Создать задачу</button>
+    </div>
+</div>
+</body>
+</html>

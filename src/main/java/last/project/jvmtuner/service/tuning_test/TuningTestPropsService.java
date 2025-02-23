@@ -2,12 +2,15 @@ package last.project.jvmtuner.service.tuning_test;
 
 import jakarta.annotation.Nullable;
 import last.project.jvmtuner.dao.tuning_test.TuningTestPropsRepository;
+import last.project.jvmtuner.dto.tuning_test.TuningTestPropsWithModesResponseDto;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
 import last.project.jvmtuner.dto.tuning_test.TuningTestPropsPreviewResponseDto;
 import last.project.jvmtuner.model.tuning_test.MetricMaxValue;
 import last.project.jvmtuner.model.tuning_test.MetricMaxValueId;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
+import last.project.jvmtuner.service.tuning_task.TuningTaskService;
 import last.project.jvmtuner.util.K8sDeploymentUtil;
+import last.project.jvmtuner.util.SerializationUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -20,8 +23,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TuningTestPropsService {
 
-    private final TuningTestPropsRepository tuningTestPropsRepository;
+    private final TuningTestPropsRepository testPropsRepository;
     private final K8sDeployService k8sDeployService;
+    private final TuningTaskService taskService;
 
     public TuningTestProps saveTuningTestProps(String deployment, String appContainerName, String appMetricPortWithPath,
                                                String gatlingImage, String gatlingExecCommand,
@@ -50,11 +54,11 @@ public class TuningTestPropsService {
                 .setStartTestTimeoutSec(startTestTimeoutSec)
                 .setDescription(description);
 
-        return tuningTestPropsRepository.save(props);
+        return testPropsRepository.save(props);
     }
 
     public List<TuningTestPropsPreviewResponseDto> getAllProps() {
-        return tuningTestPropsRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
+        return testPropsRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
                 .map(prop -> new TuningTestPropsPreviewResponseDto()
                         .setId(prop.getId())
                         .setDescription(prop.getDescription()))
@@ -63,6 +67,26 @@ public class TuningTestPropsService {
 
     @Transactional
     public void delete(long propId) {
-        tuningTestPropsRepository.deleteById(propId);
+        testPropsRepository.deleteById(propId);
+    }
+
+    @Transactional
+    public TuningTestPropsWithModesResponseDto getPropsWithModes(long propsId) {
+        var props = testPropsRepository.findById(propsId).get();
+        var metricValuesList = props.getMetricMaxValues().stream()
+                .map(metricValue -> new MetricMaxValueDto()
+                        .setQuery(metricValue.getMetricQueryProps().getQuery())
+                        .setMaxValue(metricValue.getValue())
+                ).toList();
+        return new TuningTestPropsWithModesResponseDto()
+                .setId(propsId)
+                .setDescription(props.getDescription())
+                .setAppContainerName(props.getAppContainerName())
+                .setGatlingExecCommand(props.getGatlingExecCommand())
+                .setStartTestTimeoutSec(props.getStartTestTimeoutSec())
+                .setTestDurationSec(props.getTestDurationSec())
+                .setPreparedDeployment(SerializationUtil.beautifyJSON(props.getPreparedDeployment()))
+                .setMetricMaxValues(metricValuesList)
+                .setTuningModes(taskService.getAvailableModes());
     }
 }

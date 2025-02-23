@@ -134,4 +134,8 @@ public class TuningTaskService {
         response.setTestDto(testDtoList);
         return response;
     }
+
+    public List<TuningMode> getAvailableModes() {
+        return List.of(TuningMode.values());
+    }
 }

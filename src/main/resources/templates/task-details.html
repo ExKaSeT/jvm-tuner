@@ -66,13 +66,13 @@
             </div>
             <div class="task-text" th:if="${test.podName != null}">Pod: <span th:text="${test.podName}"></span></div>
 
-            <button class="btn btn-outline-primary toggle-btn" th:if="${test.deployment != null}"
+            <button class="btn btn-outline-primary btn-sm toggle-btn" th:if="${test.deployment != null}"
                     th:data-id="'deployment-' + ${test.uuid}" onclick="toggleElement(this)">
                 Показать развертывание
             </button>
             <pre th:id="'deployment-' + ${test.uuid}" style="display: none;" th:text="${test.deployment}"></pre>
 
-            <button class="btn btn-outline-success toggle-btn" th:if="${test.testMetricsDto != null}"
+            <button class="btn btn-outline-success btn-sm toggle-btn" th:if="${test.testMetricsDto != null}"
                     th:data-id="'metrics-' + ${test.uuid}" onclick="toggleElement(this)">
                 Показать метрики
             </button>
