@@ -9,10 +9,12 @@ import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_task.TuningTaskStatus;
 import last.project.jvmtuner.model.tuning_task.TuningTaskTest;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
+import last.project.jvmtuner.service.tuning_test.TuningTestPropsService;
 import last.project.jvmtuner.service.tuning_test.TuningTestService;
 import last.project.jvmtuner.util.SerializationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -33,6 +35,15 @@ public class TuningTaskService {
     private final TuningTaskRepository taskRepository;
     private final TuningTaskTestService taskTestService;
     private final TuningTestService testService;
+    private final TuningTestPropsService testPropsService;
+    private final ApplicationContext appContext;
+
+    @Transactional
+    public TuningTask startTask(long propsId, TuningMode mode) {
+        var service = appContext.getBean(TuningMode.getServiceClass(mode));
+        var props = testPropsService.get(propsId);
+        return service.start(props);
+    }
 
     public TuningTask createTask(TuningTestProps props, TuningMode mode) {
         var task = new TuningTask()
@@ -133,9 +144,5 @@ public class TuningTaskService {
         testDtoList.sort(Comparator.comparingLong(testDto -> testDto.getDeployedTime().toEpochMilli()));
         response.setTestDto(testDtoList);
         return response;
-    }
-
-    public List<TuningMode> getAvailableModes() {
-        return List.of(TuningMode.values());
     }
 }

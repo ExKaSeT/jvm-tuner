@@ -1,5 +1,7 @@
 package last.project.jvmtuner.controller;
 
+import last.project.jvmtuner.dto.tuning_task.CreateTaskResponseDto;
+import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.service.tuning_task.TuningTaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -31,5 +33,12 @@ public class TaskController {
         var taskDetails = taskService.getDetails(taskId);
         model.addAttribute("task", taskDetails);
         return "task-details";
+    }
+
+    @PostMapping
+    @ResponseBody
+    public CreateTaskResponseDto createTask(@RequestParam Long propId, @RequestParam TuningMode mode) {
+        var task = taskService.startTask(propId, mode);
+        return new CreateTaskResponseDto().setId(task.getId());
     }
 }

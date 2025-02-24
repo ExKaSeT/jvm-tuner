@@ -3,6 +3,7 @@ package last.project.jvmtuner.service.tuning_task.mode;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import last.project.jvmtuner.dto.mode.ParallelGCDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
+import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.props.ParallelGCProps;
 import last.project.jvmtuner.service.tuning_task.TuningTaskService;
@@ -36,7 +37,7 @@ public class ParallelGCService implements TuningModeService {
 
     @Override
     @Transactional
-    public void start(TuningTestProps testProps) {
+    public TuningTask start(TuningTestProps testProps) {
         var data = new ParallelGCDto()
                 .setRetryCount(0)
                 .setThreads(parallelGCProps.getInitialThreads());
@@ -47,9 +48,10 @@ public class ParallelGCService implements TuningModeService {
         taskTestService.save(task, test, String.format("Initial test with %d threads", data.getThreads()));
 
         data.setCurrentTest(test.getUuid());
-        taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
+        task = taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
 
         log.info(String.format("Start initial test '%s' in task '%s'", test.getUuid(), task.getId()));
+        return task;
     }
 
     @Override

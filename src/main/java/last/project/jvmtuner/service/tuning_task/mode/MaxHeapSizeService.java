@@ -40,7 +40,7 @@ public class MaxHeapSizeService implements TuningModeService {
 
     @Override
     @Transactional
-    public void start(TuningTestProps testProps) {
+    public TuningTask start(TuningTestProps testProps) {
         var memoryLimitMB = K8sDeploymentUtil.getAppMemoryLimitsMB(testProps);
         var data = new MaxHeapSizeDto()
                 .setRetryCount(0)
@@ -52,9 +52,10 @@ public class MaxHeapSizeService implements TuningModeService {
         taskTestService.save(task, test, "Initial test with unmodified deployment");
 
         data.setCurrentTest(test.getUuid());
-        taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
+        task = taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
 
         log.info(String.format("Start initial test '%s' in task '%s'", test.getUuid(), task.getId()));
+        return task;
     }
 
     @Override

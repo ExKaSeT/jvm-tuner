@@ -3,6 +3,7 @@ package last.project.jvmtuner.service.tuning_task.mode;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import last.project.jvmtuner.dto.mode.SerialGCDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
+import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_test.TuningTest;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.props.SerialGCProps;
@@ -42,7 +43,7 @@ public class SerialGCService implements TuningModeService {
 
     @Override
     @Transactional
-    public void start(TuningTestProps testProps) {
+    public TuningTask start(TuningTestProps testProps) {
         var jvmOptions = K8sDeploymentUtil.getJvmOptionList(K8sDeploymentUtil
                 .deserialize(testProps.getPreparedDeployment()), testProps.getAppContainerName());
         var maxHeap = jvmOptions.stream()
@@ -63,9 +64,10 @@ public class SerialGCService implements TuningModeService {
         taskTestService.save(task, test, "Initial test with unmodified deployment");
 
         data.setCurrentTest(test.getUuid());
-        taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
+        task = taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
 
         log.info(String.format("Start initial test '%s' in task '%s'", test.getUuid(), task.getId()));
+        return task;
     }
 
     @Override

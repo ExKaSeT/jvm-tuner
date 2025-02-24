@@ -2,6 +2,7 @@ package last.project.jvmtuner.service.tuning_task.mode;
 
 import last.project.jvmtuner.dto.mode.SequentialModeDto;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
+import last.project.jvmtuner.model.tuning_task.TuningTask;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
 import last.project.jvmtuner.props.G1GCProps;
 import last.project.jvmtuner.service.tuning_task.TuningTaskService;
@@ -32,14 +33,15 @@ public class G1GCService implements TuningModeService {
 
     @Override
     @Transactional
-    public void start(TuningTestProps testProps) {
+    public TuningTask start(TuningTestProps testProps) {
         var task = taskService.createTask(testProps, TuningMode.G1_GC);
 
         var data = sequentialModeService.startMode(task, testProps,
                 SequentialModeService.getTestOptionList(GC_JVM_OPTION, TEST_JVM_OPTIONS));
-        taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
+        task = taskService.updateModeData(task.getId(), SerializationUtil.serialize(data));
 
         log.info(String.format("Start tuning in task '%s'", task.getId()));
+        return task;
     }
 
     @Override

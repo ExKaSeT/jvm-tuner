@@ -5,10 +5,10 @@ import last.project.jvmtuner.dao.tuning_test.TuningTestPropsRepository;
 import last.project.jvmtuner.dto.tuning_test.TuningTestPropsWithModesResponseDto;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
 import last.project.jvmtuner.dto.tuning_test.TuningTestPropsPreviewResponseDto;
+import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_test.MetricMaxValue;
 import last.project.jvmtuner.model.tuning_test.MetricMaxValueId;
 import last.project.jvmtuner.model.tuning_test.TuningTestProps;
-import last.project.jvmtuner.service.tuning_task.TuningTaskService;
 import last.project.jvmtuner.util.K8sDeploymentUtil;
 import last.project.jvmtuner.util.SerializationUtil;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,6 @@ public class TuningTestPropsService {
 
     private final TuningTestPropsRepository testPropsRepository;
     private final K8sDeployService k8sDeployService;
-    private final TuningTaskService taskService;
 
     public TuningTestProps saveTuningTestProps(String deployment, String appContainerName, String appMetricPortWithPath,
                                                String gatlingImage, String gatlingExecCommand,
@@ -87,6 +86,10 @@ public class TuningTestPropsService {
                 .setTestDurationSec(props.getTestDurationSec())
                 .setPreparedDeployment(SerializationUtil.beautifyJSON(props.getPreparedDeployment()))
                 .setMetricMaxValues(metricValuesList)
-                .setTuningModes(taskService.getAvailableModes());
+                .setTuningModes(TuningMode.getAvailableModes());
+    }
+
+    public TuningTestProps get(long propId) {
+        return testPropsRepository.findById(propId).get();
     }
 }
