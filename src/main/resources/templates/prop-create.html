@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <title>Создать конфигурацию</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function addMetric() {
+            let container = document.getElementById("metrics-container");
+            let index = container.children.length;
+            let html = `<div class='mb-3'>
+            <label class='form-label'></label>
+            <input type='text' class='form-control' name='metricMaxValues[${index}].query' placeholder='Запрос'>
+            <input type='number' class='form-control mt-2' name='metricMaxValues[${index}].maxValue' placeholder='Макс. значение'>
+            <button type='button' class='btn btn-danger mt-2' onclick='removeMetric(this)'>Удалить</button>
+        </div>`;
+            container.insertAdjacentHTML("beforeend", html);
+        }
+
+        function removeMetric(button) {
+            button.parentElement.remove();
+        }
+    </script>
+</head>
+<body>
+<div class="header" th:replace="~{fragments/header :: header}"></div>
+
+<div class="container mt-5 mb-5">
+    <h4>Создать конфигурацию</h4>
+    <form th:action="@{/properties/create}" th:object="${testProps}" method="post">
+
+        <div class="mb-3">
+            <label class="form-label">Описание</label>
+            <input type="text" class="form-control" th:field="*{description}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Имя контейнера</label>
+            <input type="text" class="form-control" th:field="*{appContainerName}">
+            <div class="text-danger" th:if="${#fields.hasErrors('appContainerName')}" th:errors="*{appContainerName}"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Порт с путем сбора метрик</label>
+            <input type="text" class="form-control" th:field="*{appMetricPortWithPath}">
+            <div class="text-danger" th:if="${#fields.hasErrors('appMetricPortWithPath')}" th:errors="*{appMetricPortWithPath}"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Команда запуска Gatling</label>
+            <input type="text" class="form-control" th:field="*{gatlingExecCommand}">
+            <div class="text-danger" th:if="${#fields.hasErrors('gatlingExecCommand')}" th:errors="*{gatlingExecCommand}"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Образ с Gatling</label>
+            <input type="text" class="form-control" th:field="*{gatlingImage}">
+            <div class="text-danger" th:if="${#fields.hasErrors('gatlingImage')}" th:errors="*{gatlingImage}"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Таймаут старта теста (сек)</label>
+            <input type="number" class="form-control" th:field="*{startTestTimeoutSec}">
+            <div class="text-danger" th:if="${#fields.hasErrors('startTestTimeoutSec')}" th:errors="*{startTestTimeoutSec}"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Длительность теста (сек)</label>
+            <input type="number" class="form-control" th:field="*{testDurationSec}">
+            <div class="text-danger" th:if="${#fields.hasErrors('testDurationSec')}" th:errors="*{testDurationSec}"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Развертывание</label>
+            <textarea class="form-control" th:field="*{deployment}"></textarea>
+            <div class="text-danger" th:if="${#fields.hasErrors('deployment')}" th:errors="*{deployment}"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Максимальные значения метрик</label>
+            <div id="metrics-container">
+                <div th:each="metric, metricStat : *{metricMaxValues}" class="mb-3">
+                    <label class="form-label"></label>
+
+                    <input type="text" class="form-control" th:field="*{metricMaxValues[__${metricStat.index}__].query}" placeholder="Запрос">
+                    <div class="text-danger" th:if="${#fields.hasErrors('metricMaxValues[__${metricStat.index}__].query')}"
+                         th:errors="*{metricMaxValues[__${metricStat.index}__].query}"></div>
+
+                    <input type="number" class="form-control mt-2" th:field="*{metricMaxValues[__${metricStat.index}__].maxValue}" placeholder="Макс. значение">
+                    <div class="text-danger" th:if="${#fields.hasErrors('metricMaxValues[__${metricStat.index}__].maxValue')}"
+                         th:errors="*{metricMaxValues[__${metricStat.index}__].maxValue}"></div>
+
+                    <button type="button" class="btn btn-danger mt-2" onclick="removeMetric(this)">Удалить</button>
+                </div>
+            </div>
+            <button type="button" class="btn btn-secondary mt-2" onclick="addMetric()">Добавить метрику</button>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Создать</button>
+    </form>
+</div>
+</body>
+</html>

@@ -1,10 +1,12 @@
 package last.project.jvmtuner.service.tuning_test;
 
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import jakarta.annotation.Nullable;
 import last.project.jvmtuner.dao.tuning_test.TuningTestPropsRepository;
 import last.project.jvmtuner.dto.tuning_test.TuningTestPropsWithModesResponseDto;
 import last.project.jvmtuner.dto.tuning_test.MetricMaxValueDto;
 import last.project.jvmtuner.dto.tuning_test.TuningTestPropsPreviewResponseDto;
+import last.project.jvmtuner.exception.DeploymentParsingException;
 import last.project.jvmtuner.model.tuning_task.TuningMode;
 import last.project.jvmtuner.model.tuning_test.MetricMaxValue;
 import last.project.jvmtuner.model.tuning_test.MetricMaxValueId;
@@ -26,6 +28,7 @@ public class TuningTestPropsService {
     private final TuningTestPropsRepository testPropsRepository;
     private final K8sDeployService k8sDeployService;
 
+    @Transactional
     public TuningTestProps saveTuningTestProps(String deployment, String appContainerName, String appMetricPortWithPath,
                                                String gatlingImage, String gatlingExecCommand,
                                                int startTestTimeoutSec, int testDurationSec,
@@ -42,7 +45,12 @@ public class TuningTestPropsService {
                 )
                 .collect(Collectors.toList());
 
-        var app = K8sDeploymentUtil.deserialize(deployment);
+        Deployment app;
+        try {
+            app = K8sDeploymentUtil.deserialize(deployment);
+        } catch (Exception ex) {
+            throw new DeploymentParsingException("Некорректный формат развертывания");
+        }
         k8sDeployService.prepareDeployment(app, appMetricPortWithPath, gatlingImage, appContainerName);
 
         props.setMetricMaxValues(metricMaxValues)
