@@ -18,6 +18,7 @@ public class TuningTestResponseDto {
     private Instant startedTestTime;
     private String deployment;
     private TestMetricsDto testMetricsDto;
+    private String grafanaUrl;
     @Data
     @Accessors(chain = true)
     public static class TestMetricsDto {

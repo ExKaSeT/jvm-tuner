@@ -24,9 +24,10 @@ metrics:
       container-name: $container
   tuning-test:
     check-delay-after-load-start-sec: 15
+  grafana-base-url: http://localhost:3000/d/f52625d9-b72d-41b1-a816-f3f79cf983f8/osnovnoj?orgId=1&timezone=browser
 
 metric-queries: # prometheus запросы для получения метрик
-  cpu-usage-avg: rate(container_cpu_usage_seconds_total{$pod, $container}[30s]) * 100
+  cpu-usage-avg: max(rate(container_cpu_usage_seconds_total{$pod, $container}[30s])) / max(kube_pod_container_resource_limits{resource="cpu", $pod, $container}) * 100
   cpu-throttling-avg: increase(container_cpu_cfs_throttled_periods_total{$pod, $container}[30s]) / increase(container_cpu_cfs_periods_total{$pod, $container}[30s]) * 100
   memory-usage-avg: container_memory_usage_bytes{$pod, $container} / 1024 / 1024
   memory-wss-avg: container_memory_working_set_bytes{$pod, $container} / 1024 / 1024

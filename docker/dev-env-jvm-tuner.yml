@@ -11,5 +11,15 @@ services:
     volumes:
       - pg-jvm-tuner-data:/var/lib/postgresql/data
 
+  grafana:
+    image: grafana/grafana:11.5.2
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
 volumes:
   pg-jvm-tuner-data:
+  grafana-data:

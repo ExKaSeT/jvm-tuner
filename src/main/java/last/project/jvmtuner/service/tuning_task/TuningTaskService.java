@@ -108,6 +108,7 @@ public class TuningTaskService {
     @Transactional
     public TuningTaskDetailsResponseDto getDetails(long taskId) {
         var task = taskRepository.findById(taskId).get();
+        var props = task.getTuningTestProps();
         var response = new TuningTaskDetailsResponseDto()
                 .setTaskDto(new TuningTaskResponseDto()
                         .setId(task.getId())
@@ -138,7 +139,8 @@ public class TuningTaskService {
                     .setDeployedTime(test.getDeployedTime())
                     .setStartedTestTime(test.getStartedTestTime())
                     .setDeployment(SerializationUtil.beautifyJSON(test.getDeployment()))
-                    .setTestMetricsDto(testMetricsDto);
+                    .setTestMetricsDto(testMetricsDto)
+                    .setGrafanaUrl(testService.getGrafanaUrl(test, props));
             testDtoList.add(testDto);
         }
         testDtoList.sort(Comparator.comparingLong(testDto -> testDto.getDeployedTime().toEpochMilli()));

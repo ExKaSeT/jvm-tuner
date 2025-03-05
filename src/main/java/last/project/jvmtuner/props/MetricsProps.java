@@ -15,6 +15,7 @@ public class MetricsProps {
     private Query query;
     @NotNull
     private TuningTest tuningTest;
+    private String grafanaBaseUrl;
     @Data
     public static class Query {
         @NotBlank
