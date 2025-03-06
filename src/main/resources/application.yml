@@ -12,6 +12,9 @@ spring:
     basename: i18n/messages
   liquibase.change-log: classpath:/db/changelog/db-changelog.xml
 
+k8s-client:
+  config-path: src/main/resources/k8s-client-config.yml
+
 metrics:
   uuid-label-name: jvm_tuner_id
   push-url: http://192.168.1.82:8428/api/v1/write
