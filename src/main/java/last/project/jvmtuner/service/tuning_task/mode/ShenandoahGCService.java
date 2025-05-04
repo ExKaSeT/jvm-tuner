@@ -23,7 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ShenandoahGCService implements TuningModeService {
 
-    private static final List<List<String>> TEST_JVM_OPTIONS = List.of(List.of("-XX:ShenandoahGCMode=iu"),
+    private static final List<List<String>> TEST_JVM_OPTIONS = List.of(List.of("-XX:ShenandoahGCMode=iu", "-XX:+UnlockExperimentalVMOptions"),
             List.of("-XX:+UseNUMA"), List.of("-XX:-UseBiasedLocking"),
             List.of("-XX:+UseTransparentHugePages", "-XX:+AlwaysPreTouch"));
     private static final String GC_JVM_OPTION = "-XX:+UseShenandoahGC";

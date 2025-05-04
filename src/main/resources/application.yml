@@ -26,7 +26,7 @@ metrics:
       pod-name: $pod
       container-name: $container
   tuning-test:
-    check-delay-after-load-start-sec: 15
+    check-delay-after-load-start-sec: 31
   grafana-base-url: http://localhost:3000/d/f52625d9-b72d-41b1-a816-f3f79cf983f8/osnovnoj?orgId=1&timezone=browser
 
 metric-queries: # prometheus запросы для получения метрик
