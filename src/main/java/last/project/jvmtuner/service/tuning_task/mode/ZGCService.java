@@ -23,8 +23,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ZGCService implements TuningModeService {
 
-    private static final List<List<String>> TEST_JVM_OPTIONS = List.of(List.of("-XX:+ZGenerational", "-XX:+UseNUMA"),
-            List.of("-XX:+ZGenerational", "-XX:+UseTransparentHugePages", "-XX:+AlwaysPreTouch", "-XX:-ZUncommit"));
+    private static final List<List<String>> TEST_JVM_OPTIONS = List.of(
+            List.of("-XX:+ZGenerational", "-XX:+UseNUMA"),
+            List.of("-XX:+ZGenerational", "-XX:+UseTransparentHugePages", "-XX:+AlwaysPreTouch", "-XX:-ZUncommit")
+    );
     private static final String GC_JVM_OPTION = "-XX:+UseZGC";
 
     private final ZGCProps zgcProps;
